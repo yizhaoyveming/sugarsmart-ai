@@ -1,0 +1,29 @@
+{
+  "name": "sugarsmart-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "智糖管家AI - 糖尿病营养管理平台 (Monorepo)",
+  "scripts": {
+    "web:dev": "pnpm --filter @sugarsmart/web dev",
+    "web:build": "pnpm --filter @sugarsmart/web build",
+    "web:preview": "pnpm --filter @sugarsmart/web preview",
+    "mobile:dev": "pnpm --filter @sugarsmart/mobile dev",
+    "mobile:build": "pnpm --filter @sugarsmart/mobile build",
+    "mobile:sync": "pnpm --filter @sugarsmart/mobile cap:sync",
+    "backend:dev": "pnpm --filter @sugarsmart/backend dev",
+    "backend:build": "pnpm --filter @sugarsmart/backend build",
+    "shared:build": "pnpm --filter @sugarsmart/shared build",
+    "build:all": "pnpm -r build",
+    "clean": "pnpm -r clean && rm -rf node_modules",
+    "install:all": "pnpm install"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "turbo": "^2.2.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}
