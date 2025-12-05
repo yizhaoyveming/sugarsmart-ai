@@ -59,9 +59,34 @@ export interface Recipe {
   steps: string[];
   nutrition: NutritionInfo;
   tips: string;
+  // 执行追踪字段
+  completed?: boolean;
+  completedAt?: string; // ISO date string
+  skipped?: boolean;
+  skippedReason?: string;
 }
 
 export type MealPlan = Recipe[];
+
+// 饮食计划执行统计
+export interface DailyPlanSummary {
+  date: string; // YYYY-MM-DD
+  planned: number; // 计划食谱数
+  completed: number; // 已完成数
+  skipped: number; // 跳过数
+  completionRate: number; // 完成率 0-100
+}
+
+// 血糖追踪统计
+export interface GlucoseStats {
+  period: '7days' | '30days';
+  average: number;
+  highest: { value: number; date: string };
+  lowest: { value: number; date: string };
+  inRange: number; // 达标次数
+  total: number; // 总记录数
+  trend: 'improving' | 'stable' | 'worsening';
+}
 
 // 新增：血糖记录
 export interface BloodGlucoseRecord {
