@@ -5,15 +5,15 @@
   "description": "智糖管家AI - 糖尿病营养管理平台 (Monorepo)",
   "scripts": {
     "dev:web": "pnpm --filter @sugarsmart/web dev",
-    "dev:app": "pnpm --filter @sugarsmart/mobile dev",
+    "dev:app": "pnpm --filter @sugarsmart/app dev",
     "dev:backend": "pnpm --filter @sugarsmart/backend dev",
     "build:web": "pnpm --filter @sugarsmart/web build",
-    "build:app": "pnpm --filter @sugarsmart/mobile build",
+    "build:app": "pnpm --filter @sugarsmart/app build",
     "build:backend": "pnpm --filter @sugarsmart/backend build",
     "build:shared": "pnpm --filter @sugarsmart/shared build",
     "build:all": "pnpm -r build",
     "preview:web": "pnpm --filter @sugarsmart/web preview",
-    "sync:app": "pnpm --filter @sugarsmart/mobile cap:sync",
+    "sync:app": "pnpm --filter @sugarsmart/app cap:sync",
     "clean": "pnpm -r clean && rm -rf node_modules",
     "install:all": "pnpm install"
   },
