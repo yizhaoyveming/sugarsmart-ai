@@ -122,8 +122,39 @@ class ApiClient {
   private token: string | null = null;
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-    this.mockMode = import.meta.env.VITE_MOCK_MODE === 'true';
+    // 🔍 调试：获取环境变量
+    const envURL = import.meta.env.VITE_API_BASE_URL;
+    const envMock = import.meta.env.VITE_MOCK_MODE;
+    
+    // 🔍 调试弹窗1：显示所有环境变量信息
+    const debugInfo = `📱 API配置调试信息\n\n` +
+      `环境变量URL: ${envURL || '❌未设置'}\n` +
+      `Mock模式: ${envMock}\n` +
+      `所有环境变量数量: ${Object.keys(import.meta.env).length}\n` +
+      `\n点击确定继续...`;
+    
+    alert(debugInfo);
+    
+    // 设置baseURL
+    this.baseURL = envURL || 'http://localhost:3000';
+    this.mockMode = envMock === 'true';
+    
+    // 🔍 调试弹窗2：检查是否需要强制修复
+    if (this.baseURL.includes('localhost') || this.baseURL.includes('127.0.0.1')) {
+      alert(`⚠️ 警告：检测到localhost地址\n\n` +
+        `当前URL: ${this.baseURL}\n\n` +
+        `将强制使用Sealos服务器\n\n` +
+        `点击确定继续...`);
+      
+      // 强制使用正确的Sealos地址
+      this.baseURL = 'https://jyrslunpgmyn.sealoshzh.site';
+    }
+    
+    // 🔍 调试弹窗3：显示最终使用的配置
+    alert(`✅ 最终配置\n\n` +
+      `API地址: ${this.baseURL}\n` +
+      `Mock模式: ${this.mockMode ? '是' : '否'}\n\n` +
+      `即将连接到此服务器`);
     
     // 从localStorage加载token
     this.token = localStorage.getItem('auth_token');
