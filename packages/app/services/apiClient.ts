@@ -406,23 +406,6 @@ class ApiClient {
   // ==================== 饮食计划管理 ====================
 
   async generateMealPlan(profile: UserProfile): Promise<ApiResponse<MealPlan>> {
-    if (this.mockMode) {
-      // 使用geminiService的mock数据
-      const { generateMealPlan } = await import('./geminiService');
-      try {
-        const mealPlan = await generateMealPlan(profile);
-        return { success: true, data: mealPlan };
-      } catch (error) {
-        return {
-          success: false,
-          error: {
-            code: 'GENERATION_FAILED',
-            message: error instanceof Error ? error.message : '生成饮食计划失败',
-          },
-        };
-      }
-    }
-
     return this.request<MealPlan>('/api/meal-plan/generate', {
       method: 'POST',
       body: JSON.stringify(profile),
@@ -468,26 +451,24 @@ class ApiClient {
     profile: UserProfile,
     mealType: string
   ): Promise<ApiResponse<Recipe>> {
-    if (this.mockMode) {
-      const { generateSingleRecipe } = await import('./geminiService');
-      try {
-        const recipe = await generateSingleRecipe(profile, mealType);
-        return { success: true, data: recipe };
-      } catch (error) {
-        return {
-          success: false,
-          error: {
-            code: 'GENERATION_FAILED',
-            message: error instanceof Error ? error.message : '生成食谱失败',
-          },
-        };
-      }
+    // Backend没有单独的食谱生成端点，调用完整计划生成然后取第一个
+    const response = await this.request<MealPlan>('/api/meal-plan/generate', {
+      method: 'POST',
+      body: JSON.stringify(profile),
+    });
+
+    if (response.success && response.data && response.data.length > 0) {
+      // 返回第一个食谱
+      return { success: true, data: response.data[0] };
     }
 
-    return this.request<Recipe>('/api/recipes/generate', {
-      method: 'POST',
-      body: JSON.stringify({ profile, mealType }),
-    });
+    return {
+      success: false,
+      error: {
+        code: 'GENERATION_FAILED',
+        message: response.error?.message || '生成失败，请重试',
+      },
+    };
   }
 
   // ==================== 血糖记录管理 ====================
