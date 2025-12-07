@@ -11,6 +11,9 @@ export default defineConfig({
   },
   plugins: [react()],
   
+  // ✅ 确保环境变量正确注入到生产构建中
+  envPrefix: ['VITE_'],
+  
   // 🔧 修复 EXDEV 错误：使用系统临时目录存储 Vite 缓存
   cacheDir: '/tmp/.vite-app',
   
