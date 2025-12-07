@@ -2,7 +2,6 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
 import { UserProfile, Gender, DiabetesType, MealPlan, Recipe, BloodGlucoseRecord, calculateBMI, getBMIStatus, calculateCalorieData } from '@sugarsmart/shared';
-import { generateMealPlan, generateSingleRecipe } from './services/geminiService';
 import { api } from './services/apiClient';
 import DataPage from './pages/DataPage';
 import AuthPage from './pages/AuthPage';
@@ -892,14 +891,20 @@ const ResultPage: React.FC = () => {
 
   const handleAutoGenerate = async () => {
     if (!userProfile) return;
-    // Just add a default meal, allow user to edit time later
     try {
-      // For auto generate from "Plus" button, we might pick "Snack" or intelligent mealType based on current time
-      const recipe = await generateSingleRecipe(userProfile, 'Snack');
-      const now = new Date();
-      recipe.time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-      addRecipeToPlan(recipe);
-    } catch(e) { console.error(e); }
+      const result = await api.generateSingleRecipe(userProfile, 'Snack');
+      if (result.success && result.data) {
+        const recipe = result.data;
+        const now = new Date();
+        recipe.time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        addRecipeToPlan(recipe);
+      } else {
+        alert('生成失败，请重试');
+      }
+    } catch(e) {
+      console.error(e);
+      alert('生成失败，请重试');
+    }
   };
 
   const openEdit = (recipe: Recipe) => {
@@ -977,11 +982,15 @@ const ResultPage: React.FC = () => {
                // 有资料：直接生成
                setIsGenerating(true);
                try {
-                 const plan = await generateMealPlan(userProfile);
-                 setMealPlan(plan);
+                 const result = await api.generateMealPlan(userProfile);
+                 if (result.success && result.data) {
+                   setMealPlan(result.data);
+                 } else {
+                   alert('生成失败，请重试');
+                 }
                } catch (error) {
                  console.error(error);
-                 alert("生成计划失败，请重试");
+                 alert("生成失败，请重试");
                } finally {
                  setIsGenerating(false);
                }
