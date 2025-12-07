@@ -17,19 +17,21 @@
     "ios:build": "npm run build && cap sync ios"
   },
   "dependencies": {
+    "@google/genai": "^1.30.0",
+    "@sugarsmart/shared": "workspace:*",
+    "lucide-react": "^0.555.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "@google/genai": "^1.30.0",
-    "react-router-dom": "^7.9.6",
-    "lucide-react": "^0.555.0",
-    "@sugarsmart/shared": "workspace:*"
+    "react-router-dom": "^7.9.6"
   },
   "devDependencies": {
+    "@capacitor/android": "^6.0.0",
     "@capacitor/cli": "^6.0.0",
     "@capacitor/core": "^6.0.0",
-    "@capacitor/android": "^6.0.0",
     "@capacitor/ios": "^6.0.0",
     "@types/node": "^22.14.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"

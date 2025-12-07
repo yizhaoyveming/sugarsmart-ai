@@ -5,8 +5,8 @@ import { UserProfile, MealPlan, Recipe } from "@sugarsmart/shared";
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 
-// Mock Mode - Set to true to use sample data instead of real API
-const MOCK_MODE = true;
+// Mock Mode - Read from environment variable
+const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === 'true';
 
 // Mock Data
 const mockMealPlan: MealPlan = [

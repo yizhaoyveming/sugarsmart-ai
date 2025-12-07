@@ -13,13 +13,11 @@ import {
   MealPlan,
   Recipe,
   BloodGlucoseRecord,
-  MedicationRecord,
   BodyMetrics,
   HealthProfile,
   WeeklyReport,
   FAQ,
-  ContactInfo,
-  ShareContent
+  ContactInfo
 } from '@sugarsmart/shared';
 
 // ==================== 类型定义 ====================
@@ -159,6 +157,85 @@ class ApiClient {
     return headers;
   }
 
+  /**
+   * 将英文错误消息翻译为中文
+   */
+  private translateErrorMessage(englishMessage: string, statusCode?: number): string {
+    // 常见错误消息映射
+    const errorMap: { [key: string]: string } = {
+      // 认证相关
+      'Invalid credentials': '用户名或密码错误',
+      'User not found': '用户不存在',
+      'User already exists': '用户名已被使用',
+      'Username already exists': '用户名已存在',
+      'Invalid token': '登录已过期，请重新登录',
+      'Token expired': '登录已过期，请重新登录',
+      'Unauthorized': '未授权，请先登录',
+      'Authentication required': '需要登录',
+      
+      // 验证相关
+      'Validation failed': '数据验证失败',
+      'Invalid input': '输入数据无效',
+      'Missing required fields': '缺少必填字段',
+      '缺少必填字段': '缺少必填字段',
+      'Invalid email format': '邮箱格式不正确',
+      'Password too short': '密码长度不足',
+      'Username too short': '账号长度不足',
+      'VALIDATION_ERROR': '数据验证失败',
+      'USERNAME_EXISTS': '用户名已存在',
+      
+      // 资源相关
+      'Not found': '未找到请求的资源',
+      'Resource not found': '资源不存在',
+      'Already exists': '资源已存在',
+      
+      // 权限相关
+      'Forbidden': '无权访问',
+      'Access denied': '访问被拒绝',
+      
+      // 服务器相关
+      'Internal server error': '服务器内部错误',
+      'Service unavailable': '服务暂时不可用',
+      'Bad gateway': '网关错误',
+    };
+
+    // HTTP状态码默认消息
+    const statusCodeMessages: { [key: number]: string } = {
+      400: '请求参数错误',
+      401: '未授权，请先登录',
+      403: '无权访问',
+      404: '请求的资源不存在',
+      409: '数据冲突，请刷新后重试',
+      422: '数据验证失败',
+      429: '请求过于频繁，请稍后再试',
+      500: '服务器内部错误',
+      502: '网关错误',
+      503: '服务暂时不可用',
+      504: '网关超时',
+    };
+
+    // 1. 先尝试精确匹配错误消息
+    if (errorMap[englishMessage]) {
+      return errorMap[englishMessage];
+    }
+
+    // 2. 尝试部分匹配（不区分大小写）
+    const lowerMessage = englishMessage.toLowerCase();
+    for (const [key, value] of Object.entries(errorMap)) {
+      if (lowerMessage.includes(key.toLowerCase())) {
+        return value;
+      }
+    }
+
+    // 3. 根据状态码返回默认消息
+    if (statusCode && statusCodeMessages[statusCode]) {
+      return statusCodeMessages[statusCode];
+    }
+
+    // 4. 如果都没匹配，返回原消息或通用错误
+    return englishMessage || '操作失败，请重试';
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -175,25 +252,52 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
+        // 翻译错误消息为中文
+        const errorMessage = this.translateErrorMessage(
+          data.message || data.error?.message || '',
+          response.status
+        );
+
         return {
           success: false,
           error: {
-            code: `HTTP_${response.status}`,
-            message: data.message || '请求失败',
+            code: data.error?.code || `HTTP_${response.status}`,
+            message: errorMessage,
           },
         };
       }
 
+      // 后端返回格式：{ success: true, data: {...} }
+      // 直接返回后端的响应，不再包装
+      if (data.success && data.data !== undefined) {
+        return {
+          success: true,
+          data: data.data,
+        };
+      }
+
+      // 如果后端没有按标准格式返回，直接包装
       return {
         success: true,
-        data,
+        data: data as T,
       };
     } catch (error) {
+      // 网络错误也提供友好的中文提示
+      let errorMessage = '网络连接失败，请检查网络后重试';
+      
+      if (error instanceof TypeError) {
+        if (error.message.includes('Failed to fetch')) {
+          errorMessage = '无法连接到服务器，请检查网络连接';
+        } else if (error.message.includes('NetworkError')) {
+          errorMessage = '网络错误，请稍后重试';
+        }
+      }
+
       return {
         success: false,
         error: {
           code: 'NETWORK_ERROR',
-          message: error instanceof Error ? error.message : '网络错误',
+          message: errorMessage,
         },
       };
     }

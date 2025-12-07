@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Search, ChevronDown, ChevronUp, Mail, MessageCircle } from 'lucide-react';
-import { FAQ } from '../types';
+import { FAQ } from '@sugarsmart/shared';
 
 interface HelpCenterProps {
   onBack: () => void;

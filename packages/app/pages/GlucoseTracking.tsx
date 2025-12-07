@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BloodGlucoseRecord, GlucoseStats } from '@sugarsmart/shared';
-import { ChevronLeft, Plus, TrendingUp, TrendingDown, Droplets, Calendar } from 'lucide-react';
+import { ChevronLeft, Plus, Droplets, Calendar } from 'lucide-react';
 
 interface GlucoseTrackingProps {
   records: BloodGlucoseRecord[];

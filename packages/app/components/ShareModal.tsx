@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Share2, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
+import { X, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 
 interface ShareModalProps {
   isOpen: boolean;

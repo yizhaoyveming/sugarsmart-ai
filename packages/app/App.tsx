@@ -1,15 +1,17 @@
 
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
-import { UserProfile, Gender, DiabetesType, MealPlan, Recipe, calculateBMI, getBMIStatus, calculateCalorieData } from '@sugarsmart/shared';
+import { UserProfile, Gender, DiabetesType, MealPlan, Recipe, BloodGlucoseRecord, calculateBMI, getBMIStatus, calculateCalorieData } from '@sugarsmart/shared';
 import { generateMealPlan, generateSingleRecipe } from './services/geminiService';
+import { api } from './services/apiClient';
+import DataPage from './pages/DataPage';
+import AuthPage from './pages/AuthPage';
 import { 
   ChefHat, 
   Activity, 
   Utensils, 
   ChevronRight, 
   ChevronLeft, 
-  Check, 
   Loader2, 
   Home, 
   User, 
@@ -17,12 +19,9 @@ import {
   Info,
   Heart,
   Share2,
-  Bookmark,
-  TrendingUp,
   AlertCircle,
   Droplets,
   Scale,
-  Clock,
   Calendar,
   Trash2,
   Plus,
@@ -38,15 +37,11 @@ import {
 // Import new components
 import HelpCenter from './components/HelpCenter';
 import ShareModal from './components/ShareModal';
-import HealthProfile from './components/HealthProfile';
-import WeeklyReport from './components/WeeklyReport';
 
 // Import UI Components
 import { 
-  LoadingOverlay, 
   ErrorBoundary,
-  useToast,
-  ErrorMessage
+  useToast
 } from './components/UIComponents';
 
 // --- Translation Mappings ---
@@ -86,9 +81,23 @@ const TRANSLATIONS = {
 // --- Context ---
 
 interface AppContextType {
+  // 认证相关
+  isAuthenticated: boolean;
+  currentUser: {
+    id: string;
+    username: string;
+    nickname: string;
+  } | null;
+  token: string | null;
+  login: (userId: string, username: string, nickname: string, token: string) => void;
+  logout: () => void;
+  
+  // 用户档案
   userProfile: UserProfile | null;
   setUserProfile: (profile: UserProfile) => void;
-  mealPlan: MealPlan | null; // Now an array of Recipes
+  
+  // 饮食计划
+  mealPlan: MealPlan | null;
   setMealPlan: (plan: MealPlan) => void;
   savedRecipes: Recipe[];
   toggleSaveRecipe: (recipe: Recipe) => void;
@@ -97,6 +106,11 @@ interface AppContextType {
   addRecipeToPlan: (recipe: Recipe) => void;
   updateRecipeInPlan: (updatedRecipe: Recipe) => void;
   removeRecipeFromPlan: (recipeId: string) => void;
+  
+  // 血糖记录
+  glucoseRecords: BloodGlucoseRecord[];
+  addGlucoseRecord: (record: Omit<BloodGlucoseRecord, 'id'>) => void;
+  deleteGlucoseRecord: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -185,7 +199,7 @@ const MenuButton: React.FC<{ icon: React.ReactNode, label: string }> = ({ icon, 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const { userProfile } = useAppContext();
-  const showNav = ['/home', '/result', '/mine'].includes(location.pathname) || (location.pathname === '/' && !!userProfile);
+  const showNav = ['/home', '/result', '/data', '/mine'].includes(location.pathname) || (location.pathname === '/' && !!userProfile);
 
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
@@ -195,10 +209,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </main>
         
         {showNav && (
-          <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.08)] flex justify-around py-3 px-2 z-50" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
-            <NavLink to="/" icon={<Home size={24} />} label="首页" active={location.pathname === '/'} />
-            <NavLink to="/result" icon={<Calendar size={24} />} label="计划" active={location.pathname.startsWith('/result')} />
-            <NavLink to="/mine" icon={<User size={24} />} label="我的" active={location.pathname === '/mine'} />
+          <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.08)] flex justify-around py-3 px-1 z-50" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
+            <NavLink to="/" icon={<Home size={22} />} label="首页" active={location.pathname === '/'} />
+            <NavLink to="/result" icon={<Calendar size={22} />} label="计划" active={location.pathname.startsWith('/result')} />
+            <NavLink to="/data" icon={<BarChart3 size={22} />} label="数据" active={location.pathname === '/data'} />
+            <NavLink to="/mine" icon={<User size={22} />} label="我的" active={location.pathname === '/mine'} />
           </nav>
         )}
       </div>
@@ -303,20 +318,25 @@ const DashboardView: React.FC<{ profile: UserProfile }> = ({ profile }) => {
   return (
     <div className="flex flex-col h-full bg-gray-50 pb-8">
       {/* Dashboard Header */}
-      <div className="bg-brand-green text-white p-6 pb-12 rounded-b-[30px] shadow-md relative">
-        <div className="flex items-center mb-6">
-           <div className="flex items-center space-x-3">
-             <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white backdrop-blur-sm">
-                <User size={24} />
-             </div>
-             <div>
-               <h1 className="text-lg font-bold">欢迎回来！</h1>
-               <p className="text-brand-light text-xs opacity-90">{profile.diabetesType} 管理</p>
-             </div>
+      <div className="bg-gradient-to-br from-emerald-500 to-green-600 text-white p-6 pb-12 rounded-b-[30px] shadow-lg relative overflow-hidden">
+        {/* 装饰背景元素 */}
+        <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
+        
+        <div className="relative z-10 flex items-center justify-between mb-6">
+           {/* Left: Title Only (隐藏logo) */}
+           <div className="flex items-center space-x-2.5">
+              {/* 标题 */}
+              <h1 className="text-xl font-bold tracking-wide">智糖管家</h1>
+           </div>
+           
+           {/* Right: Share Button */}
+           <div className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
+              <Share2 size={18} />
            </div>
         </div>
 
-        <div className="flex justify-around text-center">
+        <div className="relative z-10 flex justify-around text-center">
            <div>
               <div className="text-brand-light text-xs uppercase tracking-wider mb-1">今日已摄入</div>
               <div className="text-xl font-bold">{consumed} <span className="text-xs font-normal">千卡</span></div>
@@ -376,7 +396,7 @@ const DashboardView: React.FC<{ profile: UserProfile }> = ({ profile }) => {
                  <p className="text-sm text-gray-700 font-medium leading-relaxed">
                    "{dailyTip.text}"
                  </p>
-                 <p className="text-xs text-gray-400 mt-2">基于您的 {profile.diabetesType} 档案</p>
+                 <p className="text-xs text-gray-400 mt-2">基于您的健康数据</p>
               </div>
            </div>
         </div>
@@ -524,11 +544,16 @@ const InputPage: React.FC = () => {
     navigate('/result'); 
     
     try {
-      const plan = await generateMealPlan(formData);
-      setMealPlan(plan);
+      // 使用API客户端调用后端生成饮食计划
+      const response = await api.generateMealPlan(formData);
+      if (response.success && response.data) {
+        setMealPlan(response.data);
+      } else {
+        throw new Error(response.error?.message || '生成饮食计划失败');
+      }
     } catch (error) {
       console.error(error);
-      alert("Failed to generate meal plan. Please try again.");
+      alert(error instanceof Error ? error.message : "生成饮食计划失败，请重试");
       navigate('/input');
     } finally {
       setIsGenerating(false);
@@ -831,19 +856,6 @@ const ResultPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editRecipe, setEditRecipe] = useState<Recipe | null>(null);
 
-  const handleRegenerate = async () => {
-    if (!userProfile) return;
-    setIsGenerating(true);
-    try {
-      const plan = await generateMealPlan(userProfile);
-      setMealPlan(plan);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   const handleManualSubmit = (name: string, calories: number, time: string) => {
     if (editRecipe) {
       // Edit Mode
@@ -960,7 +972,24 @@ const ResultPage: React.FC = () => {
              </div>
            </div>
            
-           <Button onClick={() => navigate('/input')} className="w-full shadow-md">
+           <Button onClick={async () => {
+             if (userProfile) {
+               // 有资料：直接生成
+               setIsGenerating(true);
+               try {
+                 const plan = await generateMealPlan(userProfile);
+                 setMealPlan(plan);
+               } catch (error) {
+                 console.error(error);
+                 alert("生成计划失败，请重试");
+               } finally {
+                 setIsGenerating(false);
+               }
+             } else {
+               // 无资料：跳转填写
+               navigate('/input');
+             }
+           }} className="w-full shadow-md">
              <Sparkles size={18} />
              <span>开始创建计划</span>
            </Button>
@@ -1224,19 +1253,33 @@ const DetailPage: React.FC = () => {
 };
 
 const MinePage: React.FC = () => {
-  const { userProfile, savedRecipes } = useAppContext();
+  const { userProfile, savedRecipes, toggleSaveRecipe, currentUser, logout } = useAppContext();
   const navigate = useNavigate();
 
+  const handleLogout = async () => {
+    if (window.confirm('确定要退出登录吗？')) {
+      await logout();
+      navigate('/auth');
+    }
+  };
+
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-gray-50 min-h-screen pb-20">
+       {/* User Profile Header */}
        <div className="bg-white p-6 pb-10 rounded-b-[30px] shadow-sm">
          <div className="flex items-center space-x-4">
             <div className="w-16 h-16 bg-brand-light rounded-full flex items-center justify-center text-brand-green">
               <User size={32} />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-800">我的资料</h2>
-              <p className="text-sm text-gray-500">{userProfile ? `${userProfile.age} 岁 • ${TRANSLATIONS.diabetesType[userProfile.diabetesType as keyof typeof TRANSLATIONS.diabetesType]}` : '访客用户'}</p>
+            <div className="flex-1">
+              <h2 className="text-xl font-bold text-gray-800">
+                {currentUser ? currentUser.nickname : '我的资料'}
+              </h2>
+              <p className="text-sm text-gray-500">
+                {currentUser && <span className="text-gray-400">@{currentUser.username}</span>}
+                {currentUser && userProfile && <span> • </span>}
+                {userProfile && `${userProfile.age} 岁 • ${TRANSLATIONS.diabetesType[userProfile.diabetesType as keyof typeof TRANSLATIONS.diabetesType]}`}
+              </p>
             </div>
          </div>
          {userProfile && (
@@ -1255,48 +1298,95 @@ const MinePage: React.FC = () => {
               </div>
            </div>
          )}
-         <button onClick={() => navigate('/')} className="mt-4 text-brand-green text-sm font-semibold hover:underline">编辑资料</button>
+         <div className="mt-4 flex gap-3">
+           <button onClick={() => navigate('/input')} className="flex-1 text-brand-green text-sm font-semibold hover:underline text-left">编辑资料</button>
+           <button onClick={handleLogout} className="text-red-600 text-sm font-semibold hover:underline">退出登录</button>
+         </div>
        </div>
 
-       <div className="p-6 space-y-4">
-          <h3 className="font-bold text-gray-800 text-lg">功能</h3>
-          <div className="space-y-2">
-             <button onClick={() => navigate('/health-profile')} className="w-full flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50">
-               <div className="flex items-center space-x-3 text-gray-700">
-                 <FileText size={18} />
-                 <span className="font-medium text-sm">健康档案</span>
-               </div>
-               <ChevronRight size={16} className="text-gray-400" />
-             </button>
-             
-             <button onClick={() => navigate('/weekly-report')} className="w-full flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50">
-               <div className="flex items-center space-x-3 text-gray-700">
-                 <BarChart3 size={18} />
-                 <span className="font-medium text-sm">AI健康周报</span>
-               </div>
-               <ChevronRight size={16} className="text-gray-400" />
-             </button>
+       <div className="p-6 space-y-6">
+          {/* Favorites Section - Full Display */}
+          <div>
+            <h3 className="font-bold text-gray-800 text-lg mb-3 flex items-center">
+              <Heart size={20} className="mr-2 text-red-500" /> 收藏的食谱
+              <span className="ml-2 text-sm font-normal text-gray-400">({savedRecipes.length})</span>
+            </h3>
+            {savedRecipes.length > 0 ? (
+              <div className="space-y-3">
+                {savedRecipes.map((recipe, idx) => (
+                  <div 
+                    key={idx} 
+                    onClick={() => navigate('/detail', { state: { recipe } })}
+                    className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all cursor-pointer"
+                  >
+                    <div className="flex">
+                      {/* Image */}
+                      <div className="w-24 h-24 flex-shrink-0">
+                        <img 
+                          src={`https://picsum.photos/seed/${recipe.mealType + recipe.name.length}/200/200`} 
+                          className="w-full h-full object-cover" 
+                          alt={recipe.name} 
+                        />
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1 p-3 flex flex-col justify-between">
+                        <div>
+                          <h4 className="font-bold text-gray-800 text-sm line-clamp-1">{recipe.name}</h4>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                              recipe.nutrition.giLevel === 'Low' ? 'bg-green-100 text-green-700' :
+                              recipe.nutrition.giLevel === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                            }`}>
+                              {recipe.nutrition.giLevel === 'Low' ? '低' : recipe.nutrition.giLevel === 'Medium' ? '中' : '高'} GI
+                            </span>
+                            <span className="text-[10px] text-gray-500">{recipe.nutrition.calories} 千卡</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center mt-2">
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              toggleSaveRecipe(recipe); 
+                            }} 
+                            className="text-red-500 hover:text-red-600 flex items-center space-x-1"
+                          >
+                            <Heart size={14} className="fill-red-500" />
+                            <span className="text-xs">取消收藏</span>
+                          </button>
+                          <ChevronRight size={16} className="text-gray-400" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-dashed border-gray-200 p-6 text-center">
+                <div className="w-12 h-12 mx-auto bg-red-50 rounded-full flex items-center justify-center mb-3">
+                  <Heart className="text-red-400" size={24} />
+                </div>
+                <p className="text-sm text-gray-600 font-medium mb-1">还没有收藏的食谱</p>
+                <p className="text-xs text-gray-400">在食谱详情页点击收藏按钮即可添加</p>
+              </div>
+            )}
+          </div>
 
-             <button onClick={() => navigate('/help-center')} className="w-full flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50">
-               <div className="flex items-center space-x-3 text-gray-700">
-                 <HelpCircle size={18} />
-                 <span className="font-medium text-sm">帮助中心</span>
-               </div>
-               <ChevronRight size={16} className="text-gray-400" />
-             </button>
-          </div>
-          
-          <h3 className="font-bold text-gray-800 text-lg pt-4">设置</h3>
-          <div className="space-y-2">
-             <MenuButton icon={<Info size={18} />} label="关于糖尿病饮食" />
-             <MenuButton icon={<Share2 size={18} />} label="分享应用" />
-             <MenuButton icon={<Clock size={18} />} label="历史记录" />
-          </div>
-          
-          {/* Favorites also listed here but main access on home now */}
-          <div className="pt-4">
-             <h3 className="font-bold text-gray-800 mb-2">收藏的食谱 ({savedRecipes.length})</h3>
-             {savedRecipes.length === 0 && <p className="text-gray-400 text-sm">暂无收藏的食谱</p>}
+          {/* Other Section */}
+          <div>
+            <h3 className="font-bold text-gray-800 text-lg mb-3 flex items-center">
+              <Info size={20} className="mr-2 text-brand-green" /> 其他
+            </h3>
+            <div className="space-y-2">
+               <button onClick={() => navigate('/help-center')} className="w-full flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50">
+                 <div className="flex items-center space-x-3 text-gray-700">
+                   <HelpCircle size={18} />
+                   <span className="font-medium text-sm">帮助中心</span>
+                 </div>
+                 <ChevronRight size={16} className="text-gray-400" />
+               </button>
+               <MenuButton icon={<FileText size={18} />} label="关于糖尿病饮食" />
+               <MenuButton icon={<Share2 size={18} />} label="分享应用" />
+            </div>
           </div>
        </div>
     </div>
@@ -1313,9 +1403,12 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const STORAGE_VERSION = '1.0.0';
   const STORAGE_KEYS = {
     VERSION: 'sugarsmart_version',
-    USER_PROFILE: 'sugarsmart_user_profile',
-    MEAL_PLAN: 'sugarsmart_meal_plan',
-    SAVED_RECIPES: 'sugarsmart_saved_recipes'
+    AUTH_TOKEN: 'sugarsmart_auth_token',
+    CURRENT_USER: 'sugarsmart_current_user',
+    USER_PROFILE: 'sugarsmart_user_profile_cache',
+    MEAL_PLAN: 'sugarsmart_meal_plan_cache',
+    SAVED_RECIPES: 'sugarsmart_saved_recipes_cache',
+    GLUCOSE_RECORDS: 'sugarsmart_glucose_records_cache'
   };
 
   // Check and migrate storage if version mismatch
@@ -1369,6 +1462,25 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
   };
 
+  // 认证状态初始化
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    return !!token;
+  });
+
+  const [currentUser, setCurrentUser] = useState<{
+    id: string;
+    username: string;
+    nickname: string;
+  } | null>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+  });
+
   // Initialize state from localStorage with validation
   const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
     return loadFromStorage<UserProfile | null>(
@@ -1389,6 +1501,14 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>(() => {
     return loadFromStorage<Recipe[]>(
       STORAGE_KEYS.SAVED_RECIPES,
+      [],
+      (data) => Array.isArray(data)
+    );
+  });
+
+  const [glucoseRecords, setGlucoseRecords] = useState<BloodGlucoseRecord[]>(() => {
+    return loadFromStorage<BloodGlucoseRecord[]>(
+      STORAGE_KEYS.GLUCOSE_RECORDS,
       [],
       (data) => Array.isArray(data)
     );
@@ -1437,6 +1557,11 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     saveToStorage(STORAGE_KEYS.SAVED_RECIPES, savedRecipes);
   }, [savedRecipes]);
 
+  // Save to localStorage whenever glucoseRecords changes
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.GLUCOSE_RECORDS, glucoseRecords);
+  }, [glucoseRecords]);
+
   const toggleSaveRecipe = (recipe: Recipe) => {
     setSavedRecipes(prev => {
       const exists = prev.find(r => r.name === recipe.name);
@@ -1466,13 +1591,124 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     });
   };
 
+  const addGlucoseRecord = (record: Omit<BloodGlucoseRecord, 'id'>) => {
+    const newRecord: BloodGlucoseRecord = {
+      ...record,
+      id: Date.now().toString()
+    };
+    setGlucoseRecords(prev => [...prev, newRecord]);
+  };
+
+  const deleteGlucoseRecord = (id: string) => {
+    setGlucoseRecords(prev => prev.filter(r => r.id !== id));
+  };
+
+  // 数据加载方法：登录后加载用户数据
+  const loadUserData = async (userId: string) => {
+    // 加载用户档案
+    try {
+      const profile = await api.getUserProfile(userId);
+      if (profile.success && profile.data) {
+        setUserProfile(profile.data);
+      }
+    } catch (error) {
+      console.error('加载用户档案失败:', error);
+    }
+    
+    // 加载饮食计划（静默处理404错误）
+    try {
+      const plan = await api.getMealPlan(userId, new Date().toISOString().split('T')[0]);
+      if (plan.success && plan.data) {
+        setMealPlan(plan.data);
+      }
+      // 如果失败（例如404未找到），静默处理，不显示错误
+    } catch (error) {
+      // 静默处理网络错误
+    }
+    
+    // 加载收藏的食谱（注意：API返回的是食谱ID数组，这里暂时跳过）
+    // TODO: 需要根据ID数组加载完整的Recipe对象
+    // const favorites = await api.getFavorites();
+    
+    // 加载血糖记录
+    // TODO: 等待后端API实现血糖记录端点
+    // const now = new Date();
+    // const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    // const endDate = now.toISOString();
+    // const glucose = await api.getBloodGlucoseRecords(userId, startDate, endDate);
+    // if (glucose.data) {
+    //   setGlucoseRecords(glucose.data);
+    // }
+  };
+
+  // 认证方法：登录
+  const login = (userId: string, username: string, nickname: string, authToken: string) => {
+    setCurrentUser({ id: userId, username, nickname });
+    setToken(authToken);
+    setIsAuthenticated(true);
+    
+    // 保存到localStorage
+    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, authToken);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify({ id: userId, username, nickname }));
+    
+    // 登录后加载用户数据
+    loadUserData(userId);
+  };
+
+  // 认证方法：登出
+  const logout = async () => {
+    try {
+      // 调用后端登出API
+      await api.logout();
+    } catch (error) {
+      console.error('登出API调用失败:', error);
+    }
+    
+    // 清除认证状态
+    setCurrentUser(null);
+    setToken(null);
+    setIsAuthenticated(false);
+    
+    // 清除所有缓存
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
+    localStorage.removeItem(STORAGE_KEYS.MEAL_PLAN);
+    localStorage.removeItem(STORAGE_KEYS.SAVED_RECIPES);
+    localStorage.removeItem(STORAGE_KEYS.GLUCOSE_RECORDS);
+    
+    // 重置状态
+    setUserProfile(null);
+    setMealPlan(null);
+    setSavedRecipes([]);
+    setGlucoseRecords([]);
+  };
+
   return (
     <AppContext.Provider value={{
-      userProfile, setUserProfile,
-      mealPlan, setMealPlan,
-      savedRecipes, toggleSaveRecipe,
-      isGenerating, setIsGenerating,
-      addRecipeToPlan, updateRecipeInPlan, removeRecipeFromPlan
+      // 认证相关
+      isAuthenticated,
+      currentUser,
+      token,
+      login,
+      logout,
+      // 用户档案
+      userProfile, 
+      setUserProfile,
+      // 饮食计划
+      mealPlan, 
+      setMealPlan,
+      savedRecipes, 
+      toggleSaveRecipe,
+      isGenerating, 
+      setIsGenerating,
+      addRecipeToPlan, 
+      updateRecipeInPlan, 
+      removeRecipeFromPlan,
+      // 血糖记录
+      glucoseRecords,
+      addGlucoseRecord,
+      deleteGlucoseRecord
     }}>
       {children}
       
@@ -1484,6 +1720,61 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   );
 };
 
+// Wrapper components to access context
+const DataPageRoute: React.FC = () => {
+  const { glucoseRecords, addGlucoseRecord, deleteGlucoseRecord } = useAppContext();
+  return (
+    <DataPage
+      glucoseRecords={glucoseRecords}
+      onAddGlucoseRecord={addGlucoseRecord}
+      onDeleteGlucoseRecord={deleteGlucoseRecord}
+    />
+  );
+};
+
+// Protected Route Component
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, login } = useAppContext();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleAuthSuccess = (userId: string, username: string, nickname: string, token: string) => {
+    login(userId, username, nickname, token);
+    // 登录成功后跳转到首页
+    navigate('/');
+  };
+
+  if (!isAuthenticated) {
+    // 保存当前路径，登录后可以跳转回来
+    return <AuthPage onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  return <>{children}</>;
+};
+
+// Auth Route Component (redirect if already authenticated)
+const AuthRoute: React.FC = () => {
+  const { isAuthenticated, login } = useAppContext();
+  const navigate = useNavigate();
+
+  const handleAuthSuccess = (userId: string, username: string, nickname: string, token: string) => {
+    login(userId, username, nickname, token);
+    navigate('/');
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (isAuthenticated) {
+    return null;
+  }
+
+  return <AuthPage onAuthSuccess={handleAuthSuccess} />;
+};
+
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
@@ -1491,14 +1782,17 @@ const App: React.FC = () => {
         <HashRouter>
           <Layout>
             <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/input" element={<InputPage />} />
-              <Route path="/result" element={<ResultPage />} />
-              <Route path="/detail" element={<DetailPage />} />
-              <Route path="/mine" element={<MinePage />} />
-              <Route path="/health-profile" element={<HealthProfile onBack={() => window.history.back()} />} />
-              <Route path="/weekly-report" element={<WeeklyReport onBack={() => window.history.back()} />} />
-              <Route path="/help-center" element={<HelpCenter onBack={() => window.history.back()} />} />
+              {/* 公开路由 */}
+              <Route path="/auth" element={<AuthRoute />} />
+              
+              {/* 受保护的路由 */}
+              <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+              <Route path="/input" element={<ProtectedRoute><InputPage /></ProtectedRoute>} />
+              <Route path="/result" element={<ProtectedRoute><ResultPage /></ProtectedRoute>} />
+              <Route path="/detail" element={<ProtectedRoute><DetailPage /></ProtectedRoute>} />
+              <Route path="/data" element={<ProtectedRoute><DataPageRoute /></ProtectedRoute>} />
+              <Route path="/mine" element={<ProtectedRoute><MinePage /></ProtectedRoute>} />
+              <Route path="/help-center" element={<ProtectedRoute><HelpCenter onBack={() => window.history.back()} /></ProtectedRoute>} />
             </Routes>
           </Layout>
         </HashRouter>

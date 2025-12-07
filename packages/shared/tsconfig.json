@@ -8,11 +8,12 @@
     "declarationMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
+    "composite": true,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "types": ["react", "react-dom"]
