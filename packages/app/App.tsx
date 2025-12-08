@@ -5,6 +5,8 @@ import { UserProfile, Gender, DiabetesType, MealPlan, Recipe, BloodGlucoseRecord
 import { api } from './services/apiClient';
 import DataPage from './pages/DataPage';
 import AuthPage from './pages/AuthPage';
+import EditProfilePage from './pages/EditProfilePage';
+import AddGlucoseRecordPage from './pages/AddGlucoseRecordPage';
 import { 
   ChefHat, 
   Activity, 
@@ -1262,55 +1264,35 @@ const DetailPage: React.FC = () => {
 };
 
 const MinePage: React.FC = () => {
-  const { userProfile, savedRecipes, toggleSaveRecipe, currentUser, logout } = useAppContext();
+  const { userProfile, savedRecipes, toggleSaveRecipe, currentUser, logout, setUserProfile } = useAppContext();
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    if (window.confirm('确定要退出登录吗？')) {
-      await logout();
-      navigate('/auth');
-    }
+  const handleSaveProfile = (profile: UserProfile) => {
+    setUserProfile(profile);
+    // TODO: 调用API保存到后端
   };
 
   return (
     <div className="bg-gray-50 min-h-screen pb-20">
-       {/* User Profile Header */}
+       {/* User Profile Header - 可点击区域 */}
        <div className="bg-white p-6 pb-10 rounded-b-[30px] shadow-sm">
-         <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-brand-light rounded-full flex items-center justify-center text-brand-green">
+         <button 
+           onClick={() => navigate('/edit-profile')}
+           className="w-full flex items-center space-x-4 text-left hover:bg-gray-50 -m-2 p-2 rounded-xl transition-colors"
+         >
+            <div className="w-16 h-16 bg-brand-light rounded-full flex items-center justify-center text-brand-green flex-shrink-0">
               <User size={32} />
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <h2 className="text-xl font-bold text-gray-800">
                 {currentUser ? currentUser.nickname : '我的资料'}
               </h2>
               <p className="text-sm text-gray-500">
-                {currentUser && <span className="text-gray-400">@{currentUser.username}</span>}
-                {currentUser && userProfile && <span> • </span>}
-                {userProfile && `${userProfile.age} 岁 • ${TRANSLATIONS.diabetesType[userProfile.diabetesType as keyof typeof TRANSLATIONS.diabetesType]}`}
+                {currentUser ? '尚未绑定手机号' : '点击完善个人信息'}
               </p>
             </div>
-         </div>
-         {userProfile && (
-           <div className="mt-6 grid grid-cols-3 gap-3">
-              <div className="bg-gray-50 p-2 rounded-lg text-center">
-                 <div className="text-xs text-gray-400 uppercase">体重</div>
-                 <div className="font-bold text-gray-700">{userProfile.weight}kg</div>
-              </div>
-              <div className="bg-gray-50 p-2 rounded-lg text-center">
-                 <div className="text-xs text-gray-400 uppercase">血糖</div>
-                 <div className="font-bold text-gray-700">{userProfile.fastingGlucose || '-'}</div>
-              </div>
-              <div className="bg-gray-50 p-2 rounded-lg text-center">
-                 <div className="text-xs text-gray-400 uppercase">每日餐数</div>
-                 <div className="font-bold text-gray-700">{userProfile.mealsPerDay}</div>
-              </div>
-           </div>
-         )}
-         <div className="mt-4 flex gap-3">
-           <button onClick={() => navigate('/input')} className="flex-1 text-brand-green text-sm font-semibold hover:underline text-left">编辑资料</button>
-           <button onClick={handleLogout} className="text-red-600 text-sm font-semibold hover:underline">退出登录</button>
-         </div>
+            <ChevronRight size={20} className="text-gray-400 flex-shrink-0" />
+         </button>
        </div>
 
        <div className="p-6 space-y-6">
@@ -1741,6 +1723,32 @@ const DataPageRoute: React.FC = () => {
   );
 };
 
+const EditProfilePageWrapper: React.FC = () => {
+  const { userProfile, setUserProfile, logout } = useAppContext();
+  
+  if (!userProfile) {
+    // 如果没有用户档案，跳转到引导页
+    const navigate = useNavigate();
+    useEffect(() => {
+      navigate('/input');
+    }, [navigate]);
+    return null;
+  }
+  
+  return (
+    <EditProfilePage
+      userProfile={userProfile}
+      onSave={setUserProfile}
+      onLogout={logout}
+    />
+  );
+};
+
+const AddGlucoseRecordPageWrapper: React.FC = () => {
+  const { addGlucoseRecord } = useAppContext();
+  return <AddGlucoseRecordPage onAddRecord={addGlucoseRecord} />;
+};
+
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, login } = useAppContext();
@@ -1800,7 +1808,17 @@ const App: React.FC = () => {
               <Route path="/result" element={<ProtectedRoute><ResultPage /></ProtectedRoute>} />
               <Route path="/detail" element={<ProtectedRoute><DetailPage /></ProtectedRoute>} />
               <Route path="/data" element={<ProtectedRoute><DataPageRoute /></ProtectedRoute>} />
+              <Route path="/data/add-glucose" element={
+                <ProtectedRoute>
+                  <AddGlucoseRecordPageWrapper />
+                </ProtectedRoute>
+              } />
               <Route path="/mine" element={<ProtectedRoute><MinePage /></ProtectedRoute>} />
+              <Route path="/edit-profile" element={
+                <ProtectedRoute>
+                  <EditProfilePageWrapper />
+                </ProtectedRoute>
+              } />
               <Route path="/help-center" element={<ProtectedRoute><HelpCenter onBack={() => window.history.back()} /></ProtectedRoute>} />
             </Routes>
           </Layout>
