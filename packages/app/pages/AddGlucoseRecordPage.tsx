@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, AlertCircle, Check } from 'lucide-react';
 import { BloodGlucoseRecord } from '@sugarsmart/shared';
@@ -7,164 +7,144 @@ interface AddGlucoseRecordPageProps {
   onAddRecord: (record: Omit<BloodGlucoseRecord, 'id'>) => void;
 }
 
-// 滚轮选择器组件 - 带平滑滚动动画
+// 🎯 全新设计的滚轮选择器 - 使用transform而不是scrollTop
 const ScrollPicker: React.FC<{
   value: number;
   onChange: (value: number) => void;
   options: number[];
   formatValue?: (val: number) => string;
 }> = ({ value, onChange, options, formatValue = (v) => v.toString() }) => {
+  const ITEM_HEIGHT = 44; // 增大高度以显示完整数字
+  const VISIBLE_ITEMS = 3; // 只显示3个项目
   const containerRef = useRef<HTMLDivElement>(null);
-  const ITEM_HEIGHT = 40; // 每个项目的高度
-  const currentIndex = options.indexOf(value);
-  
-  // 初始化为当前项的位置
-  const [scrollOffset, setScrollOffset] = useState(-currentIndex * ITEM_HEIGHT);
+  const [startY, setStartY] = useState(0);
+  const [currentY, setCurrentY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const touchStartY = useRef(0);
-  const touchStartOffset = useRef(0);
-  const velocityRef = useRef(0);
-  const lastTouchY = useRef(0);
-  const lastTouchTime = useRef(0);
-
-  // 计算应该滚动到的位置
-  const targetScrollOffset = -currentIndex * ITEM_HEIGHT;
-
-  // 鼠标滚轮
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const direction = e.deltaY > 0 ? 1 : -1;
-    const newIndex = Math.max(0, Math.min(options.length - 1, currentIndex + direction));
-    if (newIndex !== currentIndex) {
-      onChange(options[newIndex]);
-    }
+  
+  // 当前选中项的索引
+  const currentIndex = Math.max(0, options.indexOf(value));
+  
+  // 计算偏移量：让选中项居中
+  const getOffset = (index: number) => {
+    return (VISIBLE_ITEMS - 1) / 2 * ITEM_HEIGHT - index * ITEM_HEIGHT;
   };
-
-  // 触摸开始
+  
+  const [offset, setOffset] = useState(getOffset(currentIndex));
+  
+  // 同步value变化
+  useEffect(() => {
+    if (!isDragging) {
+      const index = options.indexOf(value);
+      if (index >= 0) {
+        setOffset(getOffset(index));
+      }
+    }
+  }, [value, options, isDragging]);
+  
   const handleTouchStart = (e: React.TouchEvent) => {
     setIsDragging(true);
-    touchStartY.current = e.touches[0].clientY;
-    touchStartOffset.current = scrollOffset;
-    lastTouchY.current = e.touches[0].clientY;
-    lastTouchTime.current = Date.now();
-    velocityRef.current = 0;
+    setStartY(e.touches[0].clientY);
+    setCurrentY(e.touches[0].clientY);
   };
-
-  // 触摸滑动
+  
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return;
-    
-    const touchY = e.touches[0].clientY;
-    const deltaY = touchY - touchStartY.current;
-    const newOffset = touchStartOffset.current + deltaY;
-    
-    // 计算速度
-    const now = Date.now();
-    const timeDelta = now - lastTouchTime.current;
-    if (timeDelta > 0) {
-      velocityRef.current = (touchY - lastTouchY.current) / timeDelta;
-    }
-    lastTouchY.current = touchY;
-    lastTouchTime.current = now;
-    
-    // 限制滚动范围（允许轻微超出）
-    const minOffset = -(options.length - 1) * ITEM_HEIGHT - 20;
-    const maxOffset = 20;
-    const clampedOffset = Math.max(minOffset, Math.min(maxOffset, newOffset));
-    
-    setScrollOffset(clampedOffset);
+    const touch = e.touches[0].clientY;
+    setCurrentY(touch);
+    const deltaY = touch - startY;
+    setOffset(getOffset(currentIndex) + deltaY);
   };
-
-  // 触摸结束
+  
   const handleTouchEnd = () => {
     setIsDragging(false);
     
-    // 惯性滚动
-    let currentOffset = scrollOffset;
-    let currentVelocity = velocityRef.current * 10; // 放大速度
-    const minOffset = -(options.length - 1) * ITEM_HEIGHT;
-    const maxOffset = 0;
+    // 计算应该停在哪个项目
+    const deltaY = currentY - startY;
+    const movedItems = Math.round(-deltaY / ITEM_HEIGHT);
+    let newIndex = currentIndex + movedItems;
     
-    const momentum = () => {
-      if (Math.abs(currentVelocity) < 0.5) {
-        // 速度很小，对齐到最近的项
-        snapToNearest(currentOffset);
-        return;
-      }
-      
-      currentOffset += currentVelocity;
-      currentVelocity *= 0.92; // 衰减
-      
-      // 限制范围
-      currentOffset = Math.max(minOffset, Math.min(maxOffset, currentOffset));
-      
-      setScrollOffset(currentOffset);
-      requestAnimationFrame(momentum);
-    };
+    // 限制范围
+    newIndex = Math.max(0, Math.min(options.length - 1, newIndex));
     
-    if (Math.abs(currentVelocity) > 0.5) {
-      requestAnimationFrame(momentum);
+    // 更新值
+    if (newIndex !== currentIndex) {
+      onChange(options[newIndex]);
     } else {
-      // 立即对齐
-      snapToNearest(currentOffset);
+      // 没变化也要对齐
+      setOffset(getOffset(currentIndex));
     }
   };
-
-  // 对齐到最近的项
-  const snapToNearest = (offset: number) => {
-    const index = Math.round(-offset / ITEM_HEIGHT);
-    const clampedIndex = Math.max(0, Math.min(options.length - 1, index));
-    onChange(options[clampedIndex]);
-  };
-
-  // 初始化和值变化时更新位置
-  React.useEffect(() => {
-    if (!isDragging && currentIndex >= 0) {
-      setScrollOffset(-currentIndex * ITEM_HEIGHT);
-    }
-  }, [currentIndex, isDragging]);
-
+  
   return (
     <div 
       ref={containerRef}
-      className="relative h-32 flex flex-col items-center justify-center overflow-hidden select-none"
-      style={{ touchAction: 'none' }}
-      onWheel={handleWheel}
+      className="relative overflow-hidden"
+      style={{ 
+        height: `${ITEM_HEIGHT * VISIBLE_ITEMS}px`,
+        touchAction: 'none'
+      }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* 渐变遮罩 */}
+      {/* 遮罩层 */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-white to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-white to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent" />
       </div>
       
-      {/* 滚动容器 */}
+      {/* 选中指示线 */}
+      <div 
+        className="absolute left-0 right-0 border-y-2 border-gray-200 pointer-events-none"
+        style={{ 
+          top: `${(VISIBLE_ITEMS - 1) / 2 * ITEM_HEIGHT}px`,
+          height: `${ITEM_HEIGHT}px`
+        }}
+      />
+      
+      {/* 滚动内容 */}
       <div
         style={{
-          transform: `translateY(${scrollOffset + 56}px)`,
-          transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+          transform: `translateY(${offset}px)`,
+          transition: isDragging ? 'none' : 'transform 0.3s ease-out',
         }}
-        className="flex flex-col"
       >
         {options.map((option, index) => {
-          const distance = Math.abs(index - currentIndex);
-          const opacity = Math.max(0.3, 1 - distance * 0.3);
-          const scale = Math.max(0.8, 1 - distance * 0.15);
-          const isCurrent = index === currentIndex && !isDragging;
+          // 计算该项目距离中心线的实际距离（单位：项）
+          const centerPosition = (VISIBLE_ITEMS - 1) / 2 * ITEM_HEIGHT;
+          const itemPosition = index * ITEM_HEIGHT + offset;
+          const distanceFromCenter = Math.abs(itemPosition - centerPosition) / ITEM_HEIGHT;
+          
+          // 使用平滑的三次贝塞尔曲线计算渐变效果（超级柔和）
+          // 限制最大距离为2（避免过远的项影响计算）
+          const normalizedDistance = Math.min(distanceFromCenter, 2);
+          
+          // 透明度：使用缓动函数实现平滑渐变 (1.0 → 0.5)
+          // easeOutCubic: 开始快，结束慢
+          const t = normalizedDistance / 2; // 归一化到 0-1
+          const easedT = 1 - Math.pow(1 - t, 3); // 三次缓动
+          const opacity = 1 - easedT * 0.5; // 从1.0渐变到0.5
+          
+          // 字体大小：微妙的变化 (20 → 19)
+          // 使用平滑插值，不会有突兀感
+          const fontSizeRange = 1; // 只变化1px
+          const baseFontSize = 20;
+          const fontSize = baseFontSize - easedT * fontSizeRange;
+          
+          // 字重：更平滑的过渡
+          // 在中心附近(距离<0.3)使用600，其他使用normal
+          const fontWeight = distanceFromCenter < 0.3 ? 600 : 'normal';
           
           return (
             <div
               key={option}
-              className="flex items-center justify-center transition-all"
+              className="flex items-center justify-center"
               style={{
                 height: `${ITEM_HEIGHT}px`,
-                opacity,
-                transform: `scale(${isCurrent ? 1 : scale})`,
-                fontSize: isCurrent ? '24px' : '18px',
-                fontWeight: isCurrent ? 'bold' : 'normal',
-                color: isCurrent ? '#1f2937' : '#9ca3af'
+                fontSize: `${fontSize}px`,
+                fontWeight,
+                color: `rgba(0, 0, 0, ${opacity})`,
+                transition: isDragging ? 'none' : 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
               {formatValue(option)}
@@ -172,9 +152,6 @@ const ScrollPicker: React.FC<{
           );
         })}
       </div>
-      
-      {/* 中间选中线 */}
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-10 border-y-2 border-gray-200 pointer-events-none" />
     </div>
   );
 };
@@ -506,9 +483,7 @@ const AddGlucoseRecordPage: React.FC<AddGlucoseRecordPageProps> = ({ onAddRecord
               <div className="text-xs text-center text-gray-500 mb-1">年</div>
               <ScrollPicker
                 value={newRecord.year}
-                onChange={(v) => {
-                  setNewRecord({ ...newRecord, year: v });
-                }}
+                onChange={(v) => setNewRecord({ ...newRecord, year: v })}
                 options={generateYearOptions()}
               />
             </div>

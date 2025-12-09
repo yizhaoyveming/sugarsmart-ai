@@ -1,0 +1,102 @@
+// Prisma Schema for SugarSmart AI
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户表
+model User {
+  id           String        @id @default(uuid())
+  username     String        @unique
+  passwordHash String        @map("password_hash")
+  nickname     String
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  profile        UserProfile?
+  glucoseRecords GlucoseRecord[]
+  mealPlans      MealPlan[]
+  favorites      Favorite[]
+
+  @@map("users")
+}
+
+// 用户档案表
+model UserProfile {
+  userId          String   @id @map("user_id")
+  age             Int?
+  height          Float?
+  weight          Float?
+  gender          String?
+  diabetesType    String?  @map("diabetes_type")
+  fastingGlucose  String?  @map("fasting_glucose")
+  medication      String?
+  stapleFood      Json?    @map("staple_food")      // ["米饭", "面条"]
+  allergies       Json?                             // ["海鲜"]
+  mealsPerDay     Int?     @map("meals_per_day")
+  specialRequests String?  @map("special_requests")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+// 血糖记录表
+model GlucoseRecord {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  recordDate DateTime @map("record_date") @db.Date
+  recordTime String   @map("record_time")            // HH:MM format
+  type       String                                  // fasting, postprandial, before-meal, bedtime
+  value      Float                                   // mmol/L
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordDate])
+  @@map("glucose_records")
+}
+
+// 饮食计划表
+model MealPlan {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  planDate  DateTime @map("plan_date") @db.Date
+  recipes   Json                                  // 完整的Recipe数组 (早中晚三餐)
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, planDate])
+  @@index([userId, planDate])
+  @@map("meal_plans")
+}
+
+// 收藏表
+model Favorite {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  recipeId   String   @map("recipe_id")
+  recipeName String   @map("recipe_name")
+  recipeData Json     @map("recipe_data")        // 完整的Recipe对象
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@index([userId])
+  @@map("favorites")
+}

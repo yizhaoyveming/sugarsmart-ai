@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { generateRecipeImages } from './image.service';
 
 // 豆包AI配置
 const ARK_API_KEY = process.env.ARK_API_KEY || '';
@@ -156,7 +157,19 @@ export async function generateMealPlan(profile: UserProfile): Promise<Recipe[]> 
       id: `${recipe.mealType.toLowerCase()}-${timestamp}-${index}`
     }));
 
-    return uniqueRecipes;
+    // 为每个食谱生成图片
+    console.log('开始为食谱生成图片...');
+    const recipeNames = uniqueRecipes.map(r => r.name);
+    const imageUrls = await generateRecipeImages(recipeNames);
+    
+    // 将图片URL添加到食谱中
+    const recipesWithImages = uniqueRecipes.map((recipe, index) => ({
+      ...recipe,
+      imageUrl: imageUrls[index]
+    }));
+
+    console.log('✓ 饮食计划生成完成（包含图片）');
+    return recipesWithImages;
   } catch (error) {
     console.error('AI生成饮食计划失败:', error);
     throw new Error('生成饮食计划失败，请稍后重试');

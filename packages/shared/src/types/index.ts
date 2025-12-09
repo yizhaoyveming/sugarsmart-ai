@@ -59,6 +59,7 @@ export interface Recipe {
   steps: string[];
   nutrition: NutritionInfo;
   tips: string;
+  imageUrl?: string; // AI生成的食谱图片URL
   // 执行追踪字段
   completed?: boolean;
   completedAt?: string; // ISO date string

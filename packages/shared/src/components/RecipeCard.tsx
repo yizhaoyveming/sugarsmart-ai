@@ -17,6 +17,7 @@ export interface Recipe {
     giLevel: 'Low' | 'Medium' | 'High';
   };
   tips: string;
+  imageUrl?: string; // AI生成的图片URL
 }
 
 export interface RecipeCardProps {
@@ -36,10 +37,11 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   onToggleSave,
   onViewDetail
 }) => {
-  const getImage = (type: string, name: string) => {
-    const seed = type + name.length;
+  // 优先使用AI生成的图片，否则使用占位图
+  const imageUrl = recipe.imageUrl || (() => {
+    const seed = recipe.mealType + recipe.name.length;
     return `https://picsum.photos/seed/${seed}/400/250`;
-  };
+  })();
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group relative">
@@ -47,7 +49,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
         {/* Left Side: Image */}
         <div className="w-1/3 relative overflow-hidden">
           <img 
-            src={getImage(recipe.mealType, recipe.name)} 
+            src={imageUrl} 
             alt={recipe.name} 
             className="w-full h-full object-cover" 
           />
