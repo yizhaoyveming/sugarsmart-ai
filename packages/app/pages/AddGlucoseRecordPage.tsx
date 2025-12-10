@@ -381,15 +381,47 @@ const AddGlucoseRecordPage: React.FC<AddGlucoseRecordPageProps> = ({ onAddRecord
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* 顶部导航栏 */}
-      <div className="bg-white shadow-sm px-4 py-4 flex items-center sticky top-0 z-10">
-        <button 
-          onClick={() => navigate('/data')}
-          className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
-        >
-          <ChevronLeft size={24} className="text-gray-700" />
-        </button>
-        <h1 className="text-lg font-bold text-gray-800 ml-2">记录血糖</h1>
+      {/* 顶部导航栏 + 胶囊式Tab */}
+      <div className="bg-white shadow-sm sticky top-0 z-10">
+        {/* 导航栏 */}
+        <div className="px-4 py-4 flex items-center border-b border-gray-100">
+          <button 
+            onClick={() => navigate('/data')}
+            className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <ChevronLeft size={24} className="text-gray-700" />
+          </button>
+          <h1 className="text-lg font-bold text-gray-800 ml-2">记录血糖</h1>
+        </div>
+
+        {/* 胶囊式Tab - 差异化设计 */}
+        <div className="px-4 py-3">
+          <div className="relative bg-gray-100 rounded-full p-1 flex">
+            {/* 滑动背景指示器 */}
+            <div 
+              className="absolute top-1 bottom-1 bg-gradient-to-br from-brand-green to-emerald-600 rounded-full transition-all duration-300 ease-out shadow-sm"
+              style={{
+                left: `${Object.keys(typeLabels).indexOf(newRecord.type) * 25}%`,
+                width: '25%'
+              }}
+            />
+            
+            {/* Tab按钮 */}
+            {Object.entries(typeLabels).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setNewRecord({ ...newRecord, type: key as any })}
+                className={`relative z-10 flex-1 py-2 px-3 text-sm font-medium transition-colors duration-300 rounded-full ${
+                  newRecord.type === key
+                    ? 'text-white'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* 表单内容 */}
@@ -446,28 +478,6 @@ const AddGlucoseRecordPage: React.FC<AddGlucoseRecordPageProps> = ({ onAddRecord
               </div>
             </div>
           )}
-        </div>
-
-        {/* 测量时机 */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            测量时机
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            {Object.entries(typeLabels).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setNewRecord({ ...newRecord, type: key as any })}
-                className={`p-4 rounded-xl text-base font-medium transition-all border-2 ${
-                  newRecord.type === key
-                    ? 'border-brand-green bg-brand-light text-brand-green shadow-sm'
-                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* 测量时间 - 滚轮选择器 */}

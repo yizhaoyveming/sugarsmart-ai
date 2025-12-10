@@ -298,7 +298,7 @@ const LandingView: React.FC = () => {
 
 const DashboardView: React.FC<{ profile: UserProfile }> = ({ profile }) => {
   const navigate = useNavigate();
-  const { savedRecipes, mealPlan } = useAppContext();
+  const { savedRecipes, mealPlan, glucoseRecords } = useAppContext();
   
   // Calculate BMI using utility function
   const bmi = calculateBMI(profile.height, profile.weight);
@@ -306,6 +306,11 @@ const DashboardView: React.FC<{ profile: UserProfile }> = ({ profile }) => {
   
   // Calculate calorie data dynamically
   const { target, consumed, remaining } = calculateCalorieData(profile, mealPlan);
+
+  // 获取最新血糖记录
+  const latestGlucose = glucoseRecords.length > 0 
+    ? glucoseRecords[glucoseRecords.length - 1] 
+    : null;
 
   const tips = [
     { icon: <Droplets className="text-blue-500" size={20} />, text: "保持水分充足！今天至少喝 8 杯水。" },
@@ -316,71 +321,156 @@ const DashboardView: React.FC<{ profile: UserProfile }> = ({ profile }) => {
   const tipIndex = profile.age % tips.length;
   const dailyTip = tips[tipIndex];
 
+  // 判断血糖状态
+  const getGlucoseStatus = (value: number): 'normal' | 'low' | 'high' => {
+    if (value < 4.0) return 'low';
+    if (value <= 7.0) return 'normal';
+    return 'high';
+  };
+
+  const glucoseStatus = latestGlucose ? getGlucoseStatus(latestGlucose.value) : 'normal';
+  const glucoseProgress = latestGlucose ? Math.min((latestGlucose.value / 10) * 100, 100) : 0;
+
   return (
     <div className="flex flex-col h-full bg-gray-50 pb-8">
-      {/* Dashboard Header */}
-      <div className="bg-gradient-to-br from-emerald-500 to-green-600 text-white p-6 pb-12 rounded-b-[30px] shadow-lg relative overflow-hidden">
-        {/* 装饰背景元素 */}
-        <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
-        
-        <div className="relative z-10 flex items-center justify-between mb-6">
-           {/* Left: Title Only (隐藏logo) */}
-           <div className="flex items-center space-x-2.5">
-              {/* 标题 */}
-              <h1 className="text-xl font-bold tracking-wide">智糖管家</h1>
-           </div>
-           
-           {/* Right: Share Button */}
-           <div className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
+      {/* Dashboard Header - 简化版 */}
+      <div className="bg-gradient-to-br from-emerald-500 to-green-600 text-white p-4 shadow-lg relative">
+        <div className="flex items-center justify-between mb-3">
+           <h1 className="text-xl font-bold tracking-wide">智糖管家</h1>
+           <button className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
               <Share2 size={18} />
-           </div>
+           </button>
         </div>
-
-        <div className="relative z-10 flex justify-around text-center">
-           <div>
-              <div className="text-brand-light text-xs uppercase tracking-wider mb-1">今日已摄入</div>
-              <div className="text-xl font-bold">{consumed} <span className="text-xs font-normal">千卡</span></div>
+        
+        {/* 简化的单行热量条 */}
+        <div className="flex items-center justify-between text-sm bg-white/10 rounded-xl p-2 backdrop-blur-sm">
+           <div className="flex items-center gap-1">
+              <span className="text-white/70">已摄入</span>
+              <span className="font-bold">{consumed}</span>
            </div>
-           <div className="w-[1px] bg-white/20 h-10"></div>
-           <div>
-              <div className="text-brand-light text-xs uppercase tracking-wider mb-1">还能吃</div>
-              <div className="text-xl font-bold">{remaining} <span className="text-xs font-normal">千卡</span></div>
+           <div className="w-[1px] h-4 bg-white/30"></div>
+           <div className="flex items-center gap-1">
+              <span className="text-white/70">剩余</span>
+              <span className="font-bold">{remaining}</span>
            </div>
-           <div className="w-[1px] bg-white/20 h-10"></div>
-           <div>
-              <div className="text-brand-light text-xs uppercase tracking-wider mb-1">今日目标</div>
-              <div className="text-xl font-bold">{target} <span className="text-xs font-normal">千卡</span></div>
+           <div className="w-[1px] h-4 bg-white/30"></div>
+           <div className="flex items-center gap-1">
+              <span className="text-white/70">目标</span>
+              <span className="font-bold">{target}</span>
            </div>
         </div>
       </div>
 
-      {/* Health Status Cards */}
-      <div className="px-6 -mt-8 grid grid-cols-2 gap-4 mb-6">
-         <div className="bg-white p-4 rounded-2xl shadow-sm flex flex-col justify-between h-28 relative overflow-hidden">
-            <div className="absolute right-[-10px] top-[-10px] opacity-5">
-              <Scale size={80} />
+      {/* 血糖圆环区域 - 核心新增 */}
+      <div className="px-6 -mt-6 mb-6 relative z-10">
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-lg p-6 border border-gray-100">
+          <div className="flex flex-col items-center">
+            {/* 圆环进度指示器 */}
+            <div className="relative">
+              {/* 背景圆环 */}
+              <svg className="w-40 h-40 transform -rotate-90">
+                <circle
+                  cx="80"
+                  cy="80"
+                  r="70"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="none"
+                  className="text-gray-200"
+                />
+                {/* 进度圆环 */}
+                <circle
+                  cx="80"
+                  cy="80"
+                  r="70"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="none"
+                  strokeLinecap="round"
+                  className={`transition-all duration-500 ${
+                    glucoseStatus === 'normal' ? 'text-green-500' :
+                    glucoseStatus === 'low' ? 'text-yellow-500' : 'text-red-500'
+                  }`}
+                  strokeDasharray={`${2 * Math.PI * 70}`}
+                  strokeDashoffset={`${2 * Math.PI * 70 * (1 - glucoseProgress / 100)}`}
+                />
+              </svg>
+              
+              {/* 中心内容 */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                {latestGlucose ? (
+                  <>
+                    <div className="text-4xl font-bold text-gray-800 mb-1">
+                      {latestGlucose.value.toFixed(1)}
+                    </div>
+                    <div className="text-xs text-gray-500 mb-2">mmol/L</div>
+                    <div className={`text-xs font-medium px-2 py-1 rounded-full ${
+                      glucoseStatus === 'normal' ? 'bg-green-100 text-green-700' :
+                      glucoseStatus === 'low' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {glucoseStatus === 'normal' ? '正常' : glucoseStatus === 'low' ? '偏低' : '偏高'}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-3xl font-bold text-gray-400 mb-1">--</div>
+                    <div className="text-xs text-gray-400">暂无数据</div>
+                  </>
+                )}
+              </div>
             </div>
-            <div>
-              <p className="text-gray-500 text-xs font-medium">BMI 指数</p>
-              <h3 className="text-2xl font-bold text-gray-800 mt-1">{bmi.toFixed(1)}</h3>
+
+            {/* 快速添加按钮 */}
+            <button
+              onClick={() => navigate('/data/add-glucose')}
+              className="mt-4 w-14 h-14 rounded-full bg-gradient-to-br from-brand-green to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center justify-center"
+            >
+              <Plus size={28} strokeWidth={2.5} />
+            </button>
+            
+            {latestGlucose && (
+              <div className="mt-2 text-xs text-gray-500">
+                {latestGlucose.time} · {latestGlucose.type === 'fasting' ? '空腹' : latestGlucose.type === 'postprandial' ? '餐后' : latestGlucose.type === 'before-meal' ? '餐前' : '睡前'}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 融合健康卡片 - 左右布局 */}
+      <div className="px-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm p-4 grid grid-cols-2 gap-4">
+          {/* BMI卡片 */}
+          <div className="relative overflow-hidden">
+            <div className="absolute right-0 top-0 opacity-5">
+              <Scale size={60} />
             </div>
-            <div className={`self-start px-2 py-1 rounded-full text-xs font-bold ${bmiColor}`}>
-               {bmiStatus}
+            <div className="relative">
+              <p className="text-gray-500 text-xs font-medium mb-1">BMI指数</p>
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">{bmi.toFixed(1)}</h3>
+              <div className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${bmiColor}`}>
+                {bmiStatus}
+              </div>
             </div>
-         </div>
-         <div className="bg-white p-4 rounded-2xl shadow-sm flex flex-col justify-between h-28 relative overflow-hidden">
-            <div className="absolute right-[-10px] top-[-10px] opacity-5">
-              <Activity size={80} />
+          </div>
+
+          {/* 血糖卡片 */}
+          <div className="relative overflow-hidden border-l-2 border-gray-100 pl-4">
+            <div className="absolute right-0 top-0 opacity-5">
+              <Activity size={60} />
             </div>
-            <div>
-              <p className="text-gray-500 text-xs font-medium">空腹血糖</p>
-              <h3 className="text-2xl font-bold text-gray-800 mt-1">{profile.fastingGlucose || '--'}</h3>
+            <div className="relative">
+              <p className="text-gray-500 text-xs font-medium mb-1">最新血糖</p>
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                {latestGlucose ? latestGlucose.value.toFixed(1) : '--'}
+              </h3>
+              <div className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
+                {latestGlucose ? '刚刚记录' : '暂无记录'}
+              </div>
             </div>
-            <div className="self-start px-2 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600">
-               最近记录
-            </div>
-         </div>
+          </div>
+        </div>
       </div>
 
       {/* Recent Changes / Suggestions */}
