@@ -363,7 +363,7 @@ const DashboardView: React.FC<{ profile: UserProfile }> = ({ profile }) => {
 
       {/* 血糖圆环区域 - 核心新增 */}
       <div className="px-6 -mt-6 mb-6 relative z-10">
-        <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-lg p-6 border border-gray-100">
+        <div className="bg-white rounded-3xl shadow-lg p-6 border border-gray-100">
           <div className="flex flex-col items-center">
             {/* 圆环进度指示器 */}
             <div className="relative">
@@ -376,7 +376,7 @@ const DashboardView: React.FC<{ profile: UserProfile }> = ({ profile }) => {
                   stroke="currentColor"
                   strokeWidth="8"
                   fill="none"
-                  className="text-gray-200"
+                  className="text-gray-100"
                 />
                 {/* 进度圆环 */}
                 <circle
@@ -414,26 +414,29 @@ const DashboardView: React.FC<{ profile: UserProfile }> = ({ profile }) => {
                   </>
                 ) : (
                   <>
-                    <div className="text-3xl font-bold text-gray-400 mb-1">--</div>
+                    <div className="text-3xl font-bold text-gray-300 mb-1">--</div>
                     <div className="text-xs text-gray-400">暂无数据</div>
                   </>
                 )}
               </div>
             </div>
 
-            {/* 快速添加按钮 */}
-            <button
-              onClick={() => navigate('/data/add-glucose')}
-              className="mt-4 w-14 h-14 rounded-full bg-gradient-to-br from-brand-green to-emerald-600 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center justify-center"
-            >
-              <Plus size={28} strokeWidth={2.5} />
-            </button>
-            
-            {latestGlucose && (
-              <div className="mt-2 text-xs text-gray-500">
-                {latestGlucose.time} · {latestGlucose.type === 'fasting' ? '空腹' : latestGlucose.type === 'postprandial' ? '餐后' : latestGlucose.type === 'before-meal' ? '餐前' : '睡前'}
-              </div>
-            )}
+            {/* 快速添加按钮区域 - 优化后的设计 */}
+            <div className="mt-5 w-full">
+              {latestGlucose && (
+                <div className="text-center text-xs text-gray-500 mb-3">
+                  {latestGlucose.time} · {latestGlucose.type === 'fasting' ? '空腹' : latestGlucose.type === 'postprandial' ? '餐后' : latestGlucose.type === 'before-meal' ? '餐前' : '睡前'}
+                </div>
+              )}
+              
+              <button
+                onClick={() => navigate('/data/add-glucose')}
+                className="w-full py-3 px-4 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 text-brand-green rounded-xl font-medium transition-all flex items-center justify-center gap-2 border border-green-200 hover:border-green-300 active:scale-98"
+              >
+                <Plus size={20} strokeWidth={2.5} />
+                <span>添加血糖记录</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, AlertCircle, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertCircle, Check } from 'lucide-react';
 import { BloodGlucoseRecord } from '@sugarsmart/shared';
 
 interface AddGlucoseRecordPageProps {
@@ -381,46 +381,32 @@ const AddGlucoseRecordPage: React.FC<AddGlucoseRecordPageProps> = ({ onAddRecord
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* 顶部导航栏 + 胶囊式Tab */}
+      {/* 顶部导航栏 */}
       <div className="bg-white shadow-sm sticky top-0 z-10">
-        {/* 导航栏 */}
-        <div className="px-4 py-4 flex items-center border-b border-gray-100">
-          <button 
-            onClick={() => navigate('/data')}
-            className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <ChevronLeft size={24} className="text-gray-700" />
-          </button>
-          <h1 className="text-lg font-bold text-gray-800 ml-2">记录血糖</h1>
-        </div>
-
-        {/* 胶囊式Tab - 差异化设计 */}
-        <div className="px-4 py-3">
-          <div className="relative bg-gray-100 rounded-full p-1 flex">
-            {/* 滑动背景指示器 */}
-            <div 
-              className="absolute top-1 bottom-1 bg-gradient-to-br from-brand-green to-emerald-600 rounded-full transition-all duration-300 ease-out shadow-sm"
-              style={{
-                left: `${Object.keys(typeLabels).indexOf(newRecord.type) * 25}%`,
-                width: '25%'
-              }}
-            />
-            
-            {/* Tab按钮 */}
-            {Object.entries(typeLabels).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setNewRecord({ ...newRecord, type: key as any })}
-                className={`relative z-10 flex-1 py-2 px-3 text-sm font-medium transition-colors duration-300 rounded-full ${
-                  newRecord.type === key
-                    ? 'text-white'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+        <div className="px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center">
+            <button 
+              onClick={() => navigate('/data')}
+              className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <ChevronLeft size={24} className="text-gray-700" />
+            </button>
+            <h1 className="text-lg font-bold text-gray-800 ml-2">记录血糖</h1>
           </div>
+          
+          {/* 当前选中的测量时机 - 可点击切换 */}
+          <button 
+            onClick={() => {
+              const types = Object.keys(typeLabels) as Array<keyof typeof typeLabels>;
+              const currentIndex = types.indexOf(newRecord.type);
+              const nextIndex = (currentIndex + 1) % types.length;
+              setNewRecord({ ...newRecord, type: types[nextIndex] });
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-light text-brand-green rounded-full text-sm font-medium hover:bg-green-100 transition-colors"
+          >
+            <span>{typeLabels[newRecord.type]}</span>
+            <ChevronRight size={16} />
+          </button>
         </div>
       </div>
 
