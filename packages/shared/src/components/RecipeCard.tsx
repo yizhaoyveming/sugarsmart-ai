@@ -1,24 +1,6 @@
 import React from 'react';
 import { Heart, ChevronRight, Edit2, Trash2 } from 'lucide-react';
-
-export interface Recipe {
-  id: string;
-  name: string;
-  mealType: string;
-  time: string;
-  description: string;
-  ingredients: Array<{ name: string; amount: string }>;
-  steps: string[];
-  nutrition: {
-    calories: number;
-    carbs: number;
-    protein: number;
-    fat: number;
-    giLevel: 'Low' | 'Medium' | 'High';
-  };
-  tips: string;
-  imageUrl?: string; // AI生成的图片URL
-}
+import type { Recipe } from '../types';
 
 export interface RecipeCardProps {
   recipe: Recipe;
