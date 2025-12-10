@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
-import { UserProfile, Gender, DiabetesType, MealPlan, Recipe, BloodGlucoseRecord, calculateBMI, getBMIStatus, calculateCalorieData } from '@sugarsmart/shared';
+import { UserProfile, Gender, DiabetesType, MealPlan, Recipe, BloodGlucoseRecord, calculateBMI, getBMIStatus, calculateCalorieData, RecipeCard } from '@sugarsmart/shared';
 import { api } from './services/apiClient';
 import DataPage from './pages/DataPage';
 import AuthPage from './pages/AuthPage';
@@ -418,7 +418,7 @@ const DashboardView: React.FC<{ profile: UserProfile }> = ({ profile }) => {
               {savedRecipes.slice(0, 5).map((recipe, idx) => (
                 <div key={idx} onClick={() => navigate('/detail', { state: { recipe } })} className="min-w-[140px] w-[140px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-md transition-all transform hover:scale-105">
                   <div className="h-24 w-full bg-gray-200">
-                     <img src={`https://picsum.photos/seed/${recipe.mealType + recipe.name.length}/200/200`} className="w-full h-full object-cover" alt={recipe.name} />
+                     <img src={recipe.imageUrl || `https://picsum.photos/seed/${recipe.mealType + recipe.name.length}/200/200`} className="w-full h-full object-cover" alt={recipe.name} />
                   </div>
                   <div className="p-3">
                     <h4 className="font-bold text-gray-800 text-xs line-clamp-2 h-8">{recipe.name}</h4>
@@ -1070,82 +1070,6 @@ const ResultPage: React.FC = () => {
   );
 };
 
-const RecipeCard: React.FC<{ recipe: Recipe; onDelete?: () => void; onEdit?: () => void }> = ({ recipe, onDelete, onEdit }) => {
-  const navigate = useNavigate();
-  const { toggleSaveRecipe, savedRecipes } = useAppContext();
-  const isSaved = savedRecipes.some(r => r.name === recipe.name);
-
-  const getImage = (type: string) => {
-    const seed = type + recipe.name.length;
-    return `https://picsum.photos/seed/${seed}/400/250`;
-  };
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group relative">
-      <div className="flex">
-        {/* Left Side: Image */}
-        <div className="w-1/3 relative overflow-hidden">
-          <img src={getImage(recipe.mealType)} alt={recipe.name} className="w-full h-full object-cover" />
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-            <span className="text-white text-xs font-bold">{recipe.nutrition.calories > 0 ? `${recipe.nutrition.calories} 千卡` : 'N/A'}</span>
-          </div>
-        </div>
-
-        {/* Right Side: Content */}
-        <div className="w-2/3 p-3 flex flex-col justify-between">
-           <div>
-             <div className="flex justify-between items-start pr-6">
-               <h3 className="font-bold text-gray-800 text-sm leading-tight line-clamp-2">{recipe.name}</h3>
-             </div>
-             <div className="mt-1 flex items-center space-x-2">
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                  recipe.nutrition.giLevel === 'Low' ? 'bg-green-100 text-green-700' :
-                  recipe.nutrition.giLevel === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                }`}>
-                  {recipe.nutrition.giLevel === 'Low' ? '低' : recipe.nutrition.giLevel === 'Medium' ? '中' : '高'} GI
-                </span>
-                {recipe.nutrition.carbs > 0 && <span className="text-[10px] text-gray-500">{recipe.nutrition.carbs}克 碳水</span>}
-             </div>
-           </div>
-
-           <div className="flex justify-between items-center mt-2">
-               <button onClick={(e) => { e.stopPropagation(); toggleSaveRecipe(recipe); }} className="text-gray-400 hover:text-red-500">
-                  <Heart size={16} className={isSaved ? "fill-red-500 text-red-500" : ""} />
-               </button>
-
-              <button 
-               onClick={() => navigate('/detail', { state: { recipe } })}
-               className="text-brand-green text-xs font-semibold flex items-center hover:underline bg-brand-light px-2 py-1 rounded-full"
-              >
-               查看 <ChevronRight size={14} />
-             </button>
-           </div>
-        </div>
-      </div>
-      
-      {/* Action Buttons - Top Right */}
-      <div className="absolute top-2 right-2 flex space-x-1">
-        {onEdit && (
-           <button 
-            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            className="p-1.5 bg-white/80 rounded-full text-gray-400 hover:text-brand-green hover:bg-green-50 transition-colors shadow-sm"
-          >
-            <Edit2 size={12} />
-          </button>
-        )}
-        {onDelete && (
-          <button 
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="p-1.5 bg-white/80 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shadow-sm"
-          >
-            <Trash2 size={12} />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
-
 const DetailPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -1157,17 +1081,19 @@ const DetailPage: React.FC = () => {
 
   const isSaved = savedRecipes.some(r => r.name === recipe.name);
   
+  const recipeImageUrl = recipe.imageUrl || `https://picsum.photos/seed/${recipe.mealType + recipe.name.length}/600/400`;
+  
   const shareContent = {
     title: `${recipe.name} - 智糖管家AI`,
     description: `${recipe.description || '健康美味的糖尿病友好食谱'} | GI: ${recipe.nutrition.giLevel} | ${recipe.nutrition.calories}千卡`,
-    imageUrl: `https://picsum.photos/seed/${recipe.mealType + recipe.name.length}/600/400`
+    imageUrl: recipeImageUrl
   };
 
   return (
     <div className="bg-white min-h-screen pb-20">
       {/* Header Image */}
       <div className="relative h-64 w-full">
-        <img src={`https://picsum.photos/seed/${recipe.mealType + recipe.name.length}/600/400`} className="w-full h-full object-cover" alt={recipe.name} />
+        <img src={recipeImageUrl} className="w-full h-full object-cover" alt={recipe.name} />
         <button onClick={() => navigate(-1)} className="absolute top-4 left-4 bg-white/30 backdrop-blur-md p-2 rounded-full text-white hover:bg-white/50">
           <ChevronLeft size={24} />
         </button>
@@ -1314,7 +1240,7 @@ const MinePage: React.FC = () => {
                       {/* Image */}
                       <div className="w-24 h-24 flex-shrink-0">
                         <img 
-                          src={`https://picsum.photos/seed/${recipe.mealType + recipe.name.length}/200/200`} 
+                          src={recipe.imageUrl || `https://picsum.photos/seed/${recipe.mealType + recipe.name.length}/200/200`} 
                           className="w-full h-full object-cover" 
                           alt={recipe.name} 
                         />
@@ -1596,25 +1522,36 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   // 数据加载方法：登录后加载用户数据
   const loadUserData = async (userId: string) => {
-    // 加载用户档案
+    // 加载用户档案（404是正常的，新用户还没有档案）
     try {
       const profile = await api.getUserProfile(userId);
       if (profile.success && profile.data) {
         setUserProfile(profile.data);
+        console.log('✓ 用户档案加载成功');
       }
-    } catch (error) {
-      console.error('加载用户档案失败:', error);
+    } catch (error: any) {
+      // 404是正常情况：新用户还没有创建档案
+      if (error?.response?.status === 404 || error?.message?.includes('404')) {
+        console.log('ℹ 用户档案未找到（新用户），将引导创建档案');
+      } else {
+        console.error('加载用户档案失败:', error);
+      }
     }
     
-    // 加载饮食计划（静默处理404错误）
+    // 加载饮食计划（404是正常的，用户可能还没有生成计划）
     try {
       const plan = await api.getMealPlan(userId, new Date().toISOString().split('T')[0]);
       if (plan.success && plan.data) {
         setMealPlan(plan.data);
+        console.log('✓ 饮食计划加载成功');
       }
-      // 如果失败（例如404未找到），静默处理，不显示错误
-    } catch (error) {
-      // 静默处理网络错误
+    } catch (error: any) {
+      // 404是正常情况：用户还没有生成今天的计划
+      if (error?.response?.status === 404 || error?.message?.includes('404')) {
+        console.log('ℹ 饮食计划未找到，用户可以稍后生成');
+      } else {
+        console.error('加载饮食计划失败:', error);
+      }
     }
     
     // 加载收藏的食谱（注意：API返回的是食谱ID数组，这里暂时跳过）
