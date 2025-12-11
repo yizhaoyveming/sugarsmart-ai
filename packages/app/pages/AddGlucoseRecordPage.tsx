@@ -179,6 +179,7 @@ const AddGlucoseRecordPage: React.FC<AddGlucoseRecordPageProps> = ({ onAddRecord
     note: ''
   });
   const [validationError, setValidationError] = useState('');
+  const [showTypeSelector, setShowTypeSelector] = useState(false);
 
   const typeLabels = {
     'fasting': '空腹',
@@ -382,36 +383,76 @@ const AddGlucoseRecordPage: React.FC<AddGlucoseRecordPageProps> = ({ onAddRecord
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* 顶部导航栏 */}
-      <div className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <button 
-              onClick={() => navigate('/data')}
-              className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <ChevronLeft size={24} className="text-gray-700" />
-            </button>
-            <h1 className="text-lg font-bold text-gray-800 ml-2">记录血糖</h1>
-          </div>
-          
-          {/* 当前选中的测量时机 - 可点击切换 */}
+      <div className="bg-white shadow-sm sticky top-0 z-10 px-4 py-4">
+        <div className="flex items-center">
           <button 
-            onClick={() => {
-              const types = Object.keys(typeLabels) as Array<keyof typeof typeLabels>;
-              const currentIndex = types.indexOf(newRecord.type);
-              const nextIndex = (currentIndex + 1) % types.length;
-              setNewRecord({ ...newRecord, type: types[nextIndex] });
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-light text-brand-green rounded-full text-sm font-medium hover:bg-green-100 transition-colors"
+            onClick={() => navigate('/data')}
+            className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
           >
-            <span>{typeLabels[newRecord.type]}</span>
-            <ChevronRight size={16} />
+            <ChevronLeft size={24} className="text-gray-700" />
           </button>
+          <h1 className="text-lg font-bold text-gray-800 ml-2">记录血糖</h1>
         </div>
       </div>
 
       {/* 表单内容 */}
       <div className="flex-1 px-6 py-6 space-y-6">
+        {/* 测量时间选择 */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm relative">
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            测量时间
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowTypeSelector(!showTypeSelector)}
+            className="w-full p-4 pr-12 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none text-gray-800 font-medium bg-white text-left hover:border-brand-green hover:shadow-sm transition-all relative"
+          >
+            <span>{typeLabels[newRecord.type]}</span>
+            <svg 
+              className={`absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 transition-transform ${showTypeSelector ? 'rotate-180' : ''}`}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* 下拉选项列表 */}
+          {showTypeSelector && (
+            <>
+              {/* 遮罩层 - 点击关闭 */}
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setShowTypeSelector(false)}
+              />
+              
+              {/* 下拉菜单 */}
+              <div className="absolute left-6 right-6 top-full mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-fadeIn">
+                {Object.entries(typeLabels).map(([key, label], index) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setNewRecord({ ...newRecord, type: key as any });
+                      setShowTypeSelector(false);
+                    }}
+                    className={`w-full px-5 py-4 text-left font-medium transition-all flex items-center justify-between ${
+                      newRecord.type === key
+                        ? 'bg-brand-green text-white'
+                        : 'bg-white text-gray-800 hover:bg-gray-50'
+                    } ${index !== 0 ? 'border-t border-gray-100' : ''}`}
+                  >
+                    <span className="text-base">{label}</span>
+                    {newRecord.type === key && (
+                      <Check size={18} strokeWidth={3} />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
         {/* 血糖值输入 */}
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -426,7 +467,7 @@ const AddGlucoseRecordPage: React.FC<AddGlucoseRecordPageProps> = ({ onAddRecord
               setValidationError('');
             }}
             placeholder="例如：6.5"
-            className={`w-full p-5 border-2 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none text-center text-5xl font-bold transition-all ${
+            className={`w-full p-4 border-2 rounded-xl focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none text-center text-3xl font-bold transition-all ${
               validationError ? 'border-red-300 animate-shake bg-red-50' : 'border-gray-200'
             }`}
             autoFocus

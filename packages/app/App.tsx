@@ -32,7 +32,8 @@ import {
   Edit2,
   HelpCircle,
   FileText,
-  BarChart3
+  BarChart3,
+  Flame
 } from 'lucide-react';
 
 // Import new components
@@ -333,211 +334,185 @@ const DashboardView: React.FC<{ profile: UserProfile }> = ({ profile }) => {
 
   return (
     <div className="flex flex-col h-full bg-gray-50 pb-8">
-      {/* Dashboard Header - 简化版 */}
-      <div className="bg-gradient-to-br from-emerald-500 to-green-600 text-white p-4 shadow-lg relative">
-        <div className="flex items-center justify-between mb-3">
-           <h1 className="text-xl font-bold tracking-wide">智糖管家</h1>
-           <button className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-              <Share2 size={18} />
-           </button>
+      {/* Dashboard Header - 参考Keep/薄荷健康风格 */}
+      <div className="bg-white sticky top-0 z-10">
+        {/* 顶部状态栏区域 */}
+        <div className="bg-gradient-to-r from-brand-green to-emerald-600 px-6 pt-3 pb-16">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/50 flex items-center justify-center">
+                <Activity size={20} className="text-white" strokeWidth={2.5} />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-white">智糖管家</h1>
+                <p className="text-xs text-white/80">健康生活，从现在开始</p>
+              </div>
+            </div>
+            <button className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center hover:bg-white/30 transition-colors">
+              <Share2 size={18} className="text-white" />
+            </button>
+          </div>
         </div>
         
-        {/* 简化的单行热量条 */}
-        <div className="flex items-center justify-between text-sm bg-white/10 rounded-xl p-2 backdrop-blur-sm">
-           <div className="flex items-center gap-1">
-              <span className="text-white/70">已摄入</span>
-              <span className="font-bold">{consumed}</span>
-           </div>
-           <div className="w-[1px] h-4 bg-white/30"></div>
-           <div className="flex items-center gap-1">
-              <span className="text-white/70">剩余</span>
-              <span className="font-bold">{remaining}</span>
-           </div>
-           <div className="w-[1px] h-4 bg-white/30"></div>
-           <div className="flex items-center gap-1">
-              <span className="text-white/70">目标</span>
-              <span className="font-bold">{target}</span>
-           </div>
-        </div>
-      </div>
-
-      {/* 血糖圆环区域 - 核心新增 */}
-      <div className="px-6 -mt-6 mb-6 relative z-10">
-        <div className="bg-white rounded-3xl shadow-lg p-6 border border-gray-100">
-          <div className="flex flex-col items-center">
-            {/* 圆环进度指示器 */}
-            <div className="relative">
-              {/* 背景圆环 */}
-              <svg className="w-40 h-40 transform -rotate-90">
-                <circle
-                  cx="80"
-                  cy="80"
-                  r="70"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  fill="none"
-                  className="text-gray-100"
-                />
-                {/* 进度圆环 */}
-                <circle
-                  cx="80"
-                  cy="80"
-                  r="70"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  fill="none"
-                  strokeLinecap="round"
-                  className={`transition-all duration-500 ${
-                    glucoseStatus === 'normal' ? 'text-green-500' :
-                    glucoseStatus === 'low' ? 'text-yellow-500' : 'text-red-500'
-                  }`}
-                  strokeDasharray={`${2 * Math.PI * 70}`}
-                  strokeDashoffset={`${2 * Math.PI * 70 * (1 - glucoseProgress / 100)}`}
-                />
-              </svg>
-              
-              {/* 中心内容 */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                {latestGlucose ? (
-                  <>
-                    <div className="text-4xl font-bold text-gray-800 mb-1">
-                      {latestGlucose.value.toFixed(1)}
-                    </div>
-                    <div className="text-xs text-gray-500 mb-2">mmol/L</div>
-                    <div className={`text-xs font-medium px-2 py-1 rounded-full ${
-                      glucoseStatus === 'normal' ? 'bg-green-100 text-green-700' :
-                      glucoseStatus === 'low' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {glucoseStatus === 'normal' ? '正常' : glucoseStatus === 'low' ? '偏低' : '偏高'}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-3xl font-bold text-gray-300 mb-1">--</div>
-                    <div className="text-xs text-gray-400">暂无数据</div>
-                  </>
-                )}
+        {/* 悬浮健康卡片 - 融合版 */}
+        <div className="px-6 -mt-12 pb-4">
+          <div className="bg-white rounded-2xl shadow-lg p-4 grid grid-cols-3 gap-3">
+            {/* BMI卡片 */}
+            <div className="relative overflow-hidden">
+              <div className="absolute right-0 top-0 opacity-5">
+                <Scale size={48} />
+              </div>
+              <div className="relative">
+                <p className="text-gray-500 text-[10px] font-medium mb-1">BMI</p>
+                <h3 className="text-xl font-bold text-gray-800 mb-1">{bmi.toFixed(1)}</h3>
+                <div className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium ${bmiColor}`}>
+                  {bmiStatus}
+                </div>
               </div>
             </div>
 
-            {/* 快速添加按钮区域 - 优化后的设计 */}
-            <div className="mt-5 w-full">
-              {latestGlucose && (
-                <div className="text-center text-xs text-gray-500 mb-3">
-                  {latestGlucose.time} · {latestGlucose.type === 'fasting' ? '空腹' : latestGlucose.type === 'postprandial' ? '餐后' : latestGlucose.type === 'before-meal' ? '餐前' : '睡前'}
+            {/* 血糖卡片 */}
+            <div className="relative overflow-hidden border-l border-r border-gray-100 px-3">
+              <div className="absolute right-0 top-0 opacity-5">
+                <Activity size={48} />
+              </div>
+              <div className="relative">
+                <p className="text-gray-500 text-[10px] font-medium mb-1">血糖</p>
+                <h3 className="text-xl font-bold text-gray-800 mb-1">
+                  {latestGlucose ? latestGlucose.value.toFixed(1) : '--'}
+                </h3>
+                <div className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-600">
+                  {latestGlucose ? '正常' : '无'}
                 </div>
-              )}
+              </div>
+            </div>
+
+            {/* 热量卡片 */}
+            <div className="relative overflow-hidden">
+              <div className="absolute right-0 top-0 opacity-5">
+                <Flame size={48} />
+              </div>
+              <div className="relative">
+                <p className="text-gray-500 text-[10px] font-medium mb-1">热量</p>
+                <h3 className="text-xl font-bold text-gray-800 mb-1">{consumed}</h3>
+                <div className="w-full bg-gray-100 rounded-full h-1.5 mb-1">
+                  <div 
+                    className="bg-gradient-to-r from-orange-400 to-orange-500 h-1.5 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min((consumed / target) * 100, 100)}%` }}
+                  ></div>
+                </div>
+                <p className="text-[9px] text-gray-400">目标 {target}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 血糖记录卡片 */}
+      <div className="px-6 mt-4 mb-4">
+        <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-100">
+          {latestGlucose ? (
+            <div className="flex items-center justify-between">
+              {/* 左侧：血糖数据 */}
+              <div className="flex-1">
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-4xl font-bold text-gray-800">
+                    {latestGlucose.value.toFixed(1)}
+                  </span>
+                  <span className="text-sm text-gray-500">mmol/L</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                    glucoseStatus === 'normal' ? 'bg-green-100 text-green-700' :
+                    glucoseStatus === 'low' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {glucoseStatus === 'normal' ? '正常' : glucoseStatus === 'low' ? '偏低' : '偏高'}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {latestGlucose.time} · {latestGlucose.type === 'fasting' ? '空腹' : latestGlucose.type === 'postprandial' ? '餐后' : latestGlucose.type === 'before-meal' ? '餐前' : '睡前'}
+                  </span>
+                </div>
+              </div>
               
+              {/* 右侧：添加按钮 */}
               <button
                 onClick={() => navigate('/data/add-glucose')}
-                className="w-full py-3 px-4 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 text-brand-green rounded-xl font-medium transition-all flex items-center justify-center gap-2 border border-green-200 hover:border-green-300 active:scale-98"
+                className="w-12 h-12 rounded-full bg-brand-green hover:bg-green-700 text-white flex items-center justify-center shadow-md transition-all active:scale-95"
               >
-                <Plus size={20} strokeWidth={2.5} />
-                <span>添加血糖记录</span>
+                <Plus size={24} strokeWidth={2.5} />
               </button>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              {/* 无数据提示 */}
+              <div className="flex-1">
+                <p className="text-gray-500 text-sm">暂无血糖记录</p>
+                <p className="text-gray-400 text-xs mt-1">开始记录您的血糖数据</p>
+              </div>
+              
+              {/* 添加按钮 */}
+              <button
+                onClick={() => navigate('/data/add-glucose')}
+                className="px-4 py-2 rounded-xl bg-brand-green hover:bg-green-700 text-white text-sm font-medium shadow-md transition-all active:scale-95 flex items-center gap-1"
+              >
+                <Plus size={16} strokeWidth={2.5} />
+                <span>添加记录</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 融合健康卡片 - 左右布局 */}
+      {/* 每日健康计划 */}
       <div className="px-6 mb-6">
-        <div className="bg-white rounded-2xl shadow-sm p-4 grid grid-cols-2 gap-4">
-          {/* BMI卡片 */}
-          <div className="relative overflow-hidden">
+        <h3 className="font-bold text-gray-800 mb-2 flex items-center">
+          <Calendar className="mr-2 text-brand-green" size={18} /> 每日健康计划
+        </h3>
+        <p className="text-xs text-gray-500 mb-4">
+          {new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
+        </p>
+        
+        <div className="grid grid-cols-2 gap-3">
+          {/* 早起卡片 */}
+          <button className="relative overflow-hidden bg-white rounded-2xl shadow-sm p-4 hover:shadow-md transition-all text-left border border-gray-100">
+            <div className="absolute right-2 top-2">
+              <ChevronRight size={16} className="text-gray-400" />
+            </div>
             <div className="absolute right-0 top-0 opacity-5">
-              <Scale size={60} />
+              <Calendar size={60} />
             </div>
             <div className="relative">
-              <p className="text-gray-500 text-xs font-medium mb-1">BMI指数</p>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">{bmi.toFixed(1)}</h3>
-              <div className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${bmiColor}`}>
-                {bmiStatus}
+              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-3">
+                <span className="text-2xl">☀️</span>
               </div>
+              <p className="text-gray-500 text-xs font-medium mb-1">早起</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-1">10天</h3>
+              <p className="text-[10px] text-gray-400">连续打卡</p>
             </div>
-          </div>
+          </button>
 
-          {/* 血糖卡片 */}
-          <div className="relative overflow-hidden border-l-2 border-gray-100 pl-4">
+          {/* 运动卡片 */}
+          <button 
+            onClick={() => navigate('/data')}
+            className="relative overflow-hidden bg-white rounded-2xl shadow-sm p-4 hover:shadow-md transition-all text-left border border-gray-100"
+          >
+            <div className="absolute right-2 top-2">
+              <ChevronRight size={16} className="text-gray-400" />
+            </div>
             <div className="absolute right-0 top-0 opacity-5">
               <Activity size={60} />
             </div>
             <div className="relative">
-              <p className="text-gray-500 text-xs font-medium mb-1">最新血糖</p>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                {latestGlucose ? latestGlucose.value.toFixed(1) : '--'}
-              </h3>
-              <div className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
-                {latestGlucose ? '刚刚记录' : '暂无记录'}
+              <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mb-3">
+                <Activity size={24} className="text-green-600" />
               </div>
+              <p className="text-gray-500 text-xs font-medium mb-1">运动</p>
+              <h3 className="text-xl font-bold text-gray-800 mb-1">5000步</h3>
+              <p className="text-[10px] text-gray-400">目标10000步</p>
             </div>
-          </div>
+          </button>
         </div>
-      </div>
-
-      {/* Recent Changes / Suggestions */}
-      <div className="px-6 space-y-6">
-        <div>
-           <h3 className="font-bold text-gray-800 mb-3 flex items-center">
-             <AlertCircle className="mr-2 text-brand-green" size={18} /> 每日建议
-           </h3>
-           <div className="bg-gradient-to-r from-brand-light to-white p-5 rounded-xl border border-green-100 flex items-start space-x-4 shadow-sm">
-              <div className="bg-white p-2 rounded-full shadow-sm text-brand-green">
-                {dailyTip.icon}
-              </div>
-              <div>
-                 <p className="text-sm text-gray-700 font-medium leading-relaxed">
-                   "{dailyTip.text}"
-                 </p>
-                 <p className="text-xs text-gray-400 mt-2">基于您的健康数据</p>
-              </div>
-           </div>
-        </div>
-        
-        {/* Favorites Section on Home */}
-        <div>
-          <div className="flex justify-between items-center mb-3">
-             <h3 className="font-bold text-gray-800 flex items-center">
-               <Heart className="mr-2 text-red-500" size={18} /> 我的收藏
-             </h3>
-             {savedRecipes.length > 0 && (
-               <span className="text-xs text-brand-green font-medium cursor-pointer" onClick={() => navigate('/mine')}>查看全部</span>
-             )}
-          </div>
-          
-          {savedRecipes.length > 0 ? (
-            <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide">
-              {savedRecipes.slice(0, 5).map((recipe, idx) => (
-                <div key={idx} onClick={() => navigate('/detail', { state: { recipe } })} className="min-w-[140px] w-[140px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-md transition-all transform hover:scale-105">
-                  <div className="h-24 w-full bg-gray-200">
-                     <img src={recipe.imageUrl || `https://picsum.photos/seed/${recipe.mealType + recipe.name.length}/200/200`} className="w-full h-full object-cover" alt={recipe.name} />
-                  </div>
-                  <div className="p-3">
-                    <h4 className="font-bold text-gray-800 text-xs line-clamp-2 h-8">{recipe.name}</h4>
-                    <div className="flex items-center mt-2 space-x-1">
-                      <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded">{recipe.nutrition.giLevel} GI</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-gradient-to-br from-red-50 to-white rounded-xl border border-dashed border-red-200 p-6 text-center animate-fadeIn">
-              <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-3">
-                <Heart className="text-red-400" size={24} />
-              </div>
-              <p className="text-sm text-gray-600 font-medium mb-1">还没有收藏的食谱</p>
-              <p className="text-xs text-gray-400 mb-3">开始探索并收藏您喜欢的健康食谱</p>
-              <Button variant="outline" className="mt-2 text-xs py-2" onClick={() => navigate('/result')}>
-                <Sparkles size={14} />
-                <span>探索食谱</span>
-              </Button>
-            </div>
-          )}
-        </div>
-
-        <Button onClick={() => navigate('/result')} className="shadow-lg shadow-orange-200">查看今日饮食计划</Button>
       </div>
     </div>
   );
@@ -1743,12 +1718,13 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 // Wrapper components to access context
 const DataPageRoute: React.FC = () => {
-  const { glucoseRecords, addGlucoseRecord, deleteGlucoseRecord } = useAppContext();
+  const { glucoseRecords, addGlucoseRecord, deleteGlucoseRecord, mealPlan } = useAppContext();
   return (
     <DataPage
       glucoseRecords={glucoseRecords}
       onAddGlucoseRecord={addGlucoseRecord}
       onDeleteGlucoseRecord={deleteGlucoseRecord}
+      mealPlan={mealPlan}
     />
   );
 };

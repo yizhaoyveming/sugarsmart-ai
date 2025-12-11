@@ -1,23 +1,26 @@
 import React, { useState } from 'react';
-import { Activity, FileText, TrendingUp, BarChart3 } from 'lucide-react';
+import { Activity, Utensils, Dumbbell, BarChart3 } from 'lucide-react';
 import GlucoseTracking from './GlucoseTracking';
-import HealthProfile from '../components/HealthProfile';
-import WeeklyReport from '../components/WeeklyReport';
-import { BloodGlucoseRecord } from '@sugarsmart/shared';
+import DietRecord from './DietRecord';
+import ExerciseTracker from './ExerciseTracker';
+import { BloodGlucoseRecord, MealPlan } from '@sugarsmart/shared';
 
 interface DataPageProps {
   // 血糖相关
   glucoseRecords: BloodGlucoseRecord[];
   onAddGlucoseRecord: (record: Omit<BloodGlucoseRecord, 'id'>) => void;
   onDeleteGlucoseRecord: (id: string) => void;
+  // 饮食计划（传递给DietRecord）
+  mealPlan: MealPlan | null;
 }
 
 const DataPage: React.FC<DataPageProps> = ({
   glucoseRecords,
   onAddGlucoseRecord,
-  onDeleteGlucoseRecord
+  onDeleteGlucoseRecord,
+  mealPlan
 }) => {
-  const [activeTab, setActiveTab] = useState<'glucose' | 'health' | 'report'>('glucose');
+  const [activeTab, setActiveTab] = useState<'glucose' | 'diet' | 'exercise'>('glucose');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -48,27 +51,27 @@ const DataPage: React.FC<DataPageProps> = ({
           </button>
           
           <button
-            onClick={() => setActiveTab('health')}
+            onClick={() => setActiveTab('diet')}
             className={`flex-1 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-              activeTab === 'health'
+              activeTab === 'diet'
                 ? 'bg-brand-green text-white shadow-sm'
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
-            <FileText size={18} />
-            <span className="text-sm">健康档案</span>
+            <Utensils size={18} />
+            <span className="text-sm">饮食记录</span>
           </button>
           
           <button
-            onClick={() => setActiveTab('report')}
+            onClick={() => setActiveTab('exercise')}
             className={`flex-1 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
-              activeTab === 'report'
+              activeTab === 'exercise'
                 ? 'bg-brand-green text-white shadow-sm'
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
-            <TrendingUp size={18} />
-            <span className="text-sm">AI周报</span>
+            <Dumbbell size={18} />
+            <span className="text-sm">运动打卡</span>
           </button>
         </div>
       </div>
@@ -85,12 +88,15 @@ const DataPage: React.FC<DataPageProps> = ({
           </div>
         )}
         
-        {activeTab === 'health' && (
-          <HealthProfile onBack={() => {}} />
+        {activeTab === 'diet' && (
+          <DietRecord 
+            mealPlan={mealPlan}
+            onBack={() => {}}
+          />
         )}
         
-        {activeTab === 'report' && (
-          <WeeklyReport onBack={() => {}} />
+        {activeTab === 'exercise' && (
+          <ExerciseTracker onBack={() => {}} />
         )}
       </div>
     </div>

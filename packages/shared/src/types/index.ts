@@ -168,6 +168,53 @@ export interface WeeklyReport {
   generatedAt: string;
 }
 
+// 新增：饮食记录
+export interface FoodItem {
+  name: string;
+  calories: number;
+  carbs: number;
+  protein: number;
+  fat: number;
+  giLevel: 'Low' | 'Medium' | 'High';
+  portion?: string;
+}
+
+export interface DietRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  foods: FoodItem[];
+  totalCalories: number;
+  totalCarbs: number;
+  totalProtein: number;
+  totalFat: number;
+  note?: string;
+  imageUrl?: string;
+}
+
+// 新增：运动记录
+export interface ExerciseRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  type: 'walking' | 'running' | 'yoga' | 'swimming' | 'cycling' | 'strength' | 'other';
+  duration: number; // 分钟
+  caloriesBurned: number;
+  distance?: number; // 公里
+  steps?: number; // 步数
+  intensity?: 'low' | 'medium' | 'high';
+  note?: string;
+}
+
+// 新增：运动统计
+export interface ExerciseStats {
+  weeklyDays: number; // 本周运动天数
+  weeklyCalories: number; // 本周消耗卡路里
+  monthlyDays: number; // 本月运动天数
+  totalDays: number; // 累计运动天数
+  streak: number; // 连续打卡天数
+}
+
 // 新增：帮助中心FAQ
 export interface FAQ {
   id: string;
